@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Constantes de l'application BrewMaster
+/// Constantes de l'application D'Zut Brewery
 class AppConstants {
   // Empêcher l'instanciation
   AppConstants._();
@@ -8,34 +8,35 @@ class AppConstants {
   // ============================================================
   // INFORMATIONS APP
   // ============================================================
-  
-  static const String appName = 'BrewMaster';
+
+  static const String appName = "D'Zut Brewery";
   static const String appVersion = '1.0.0';
   static const String appDescription = 'Gestion de brasserie artisanale';
 
   // ============================================================
   // COULEURS
   // ============================================================
-  
-  static const Color primaryColor = Color(0xFFD97706);      // Ambre/Orange bière
-  static const Color primaryDark = Color(0xFFB45309);
-  static const Color primaryLight = Color(0xFFFBBF24);
-  
-  static const Color secondaryColor = Color(0xFF065F46);    // Vert houblon
-  static const Color secondaryDark = Color(0xFF064E3B);
-  static const Color secondaryLight = Color(0xFF10B981);
-  
-  static const Color backgroundColor = Color(0xFFFFFBEB);   // Crème clair
+
+  // Palette principale
+  static const Color primaryColor = Color(0xFFE89C31);      // Orange/Ambre
+  static const Color primaryDark = Color(0xFF8C0E0F);       // Rouge bordeaux
+  static const Color primaryLight = Color(0xFFDBA858);      // Doré/Tan
+
+  static const Color secondaryColor = Color(0xFF083248);    // Bleu pétrole
+  static const Color secondaryDark = Color(0xFF031B28);     // Bleu très foncé
+  static const Color secondaryLight = Color(0xFF0B2838);    // Bleu foncé
+
+  static const Color backgroundColor = Color(0xFFF5F0E8);   // Crème clair
   static const Color surfaceColor = Color(0xFFFFFFFF);
-  static const Color errorColor = Color(0xFFDC2626);
-  static const Color successColor = Color(0xFF16A34A);
-  static const Color warningColor = Color(0xFFEAB308);
-  
+  static const Color errorColor = Color(0xFF8C0E0F);        // Rouge bordeaux
+  static const Color successColor = Color(0xFF2E7D32);      // Vert foncé
+  static const Color warningColor = Color(0xFFE89C31);      // Orange
+
   // Couleurs par type de matière première
-  static const Color grainColor = Color(0xFFD97706);        // Ambre
-  static const Color hopColor = Color(0xFF16A34A);          // Vert
-  static const Color yeastColor = Color(0xFF7C3AED);        // Violet
-  static const Color otherColor = Color(0xFF6B7280);        // Gris
+  static const Color grainColor = Color(0xFFDBA858);        // Doré
+  static const Color hopColor = Color(0xFF083248);          // Bleu pétrole
+  static const Color yeastColor = Color(0xFF8C0E0F);        // Rouge bordeaux
+  static const Color otherColor = Color(0xFF0B2838);        // Bleu foncé
 
   // ============================================================
   // PADDING & SPACING

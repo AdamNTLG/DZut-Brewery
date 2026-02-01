@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide MaterialType;
 import '../../constants/app_constants.dart';
 import '../../models/raw_material.dart';
 import '../../services/raw_material_service.dart';
+import '../../widgets/common/app_scaffold.dart';
 import 'raw_material_form_page.dart';
 
 /// Page listant toutes les matières premières
@@ -70,9 +71,11 @@ class _RawMaterialsListPageState extends State<RawMaterialsListPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
+      currentIndex: NavIndex.stock,
       appBar: AppBar(
         title: const Text('Matières premières'),
+        automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -107,7 +110,7 @@ class _RawMaterialsListPageState extends State<RawMaterialsListPage>
               },
             ),
           ),
-          
+
           // Liste
           Expanded(
             child: _isLoading

@@ -3,6 +3,7 @@ import '../../constants/app_constants.dart';
 import '../../models/recipe.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/common/beer_color_indicator.dart';
+import '../../widgets/common/app_scaffold.dart';
 import 'recipe_form_page.dart';
 import 'recipe_detail_page.dart';
 
@@ -55,10 +56,9 @@ class _RecipesListPageState extends State<RecipesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mes recettes'),
-      ),
+    return AppScaffold(
+      currentIndex: NavIndex.recipes,
+      title: 'Mes recettes',
       body: Column(
         children: [
           // Barre de recherche
@@ -78,7 +78,7 @@ class _RecipesListPageState extends State<RecipesListPage> {
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
-          
+
           // Liste des recettes
           Expanded(
             child: _isLoading

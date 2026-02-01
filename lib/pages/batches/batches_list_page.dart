@@ -3,6 +3,7 @@ import '../../constants/app_constants.dart';
 import '../../models/batch.dart';
 import '../../services/batch_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/common/app_scaffold.dart';
 import 'batch_form_page.dart';
 import 'batch_detail_page.dart';
 
@@ -78,9 +79,11 @@ class _BatchesListPageState extends State<BatchesListPage>
     final completed = _getCompletedBatches();
     final planned = _getPlannedBatches();
 
-    return Scaffold(
+    return AppScaffold(
+      currentIndex: NavIndex.batches,
       appBar: AppBar(
         title: const Text('Mes brassins'),
+        automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabController,
           tabs: [

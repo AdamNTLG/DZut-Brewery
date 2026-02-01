@@ -28,20 +28,21 @@ class StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppConstants.borderRadius),
         child: Padding(
-          padding: const EdgeInsets.all(AppConstants.paddingM),
+          padding: const EdgeInsets.all(AppConstants.paddingS),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppConstants.paddingS),
+                    padding: const EdgeInsets.all(AppConstants.paddingXS),
                     decoration: BoxDecoration(
                       color: cardColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
                     ),
-                    child: Icon(icon, color: cardColor, size: 24),
+                    child: Icon(icon, color: cardColor, size: 20),
                   ),
                   if (onTap != null)
                     Icon(
@@ -51,20 +52,24 @@ class StatCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: AppConstants.paddingM),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: cardColor,
+              const Spacer(),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: cardColor,
+                  ),
                 ),
               ),
               const SizedBox(height: AppConstants.paddingXS),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.grey[600],
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../models/fermenter.dart';
 import '../../services/fermenter_service.dart';
+import '../../widgets/common/app_scaffold.dart';
 import 'fermenter_form_page.dart';
 
 /// Page listant tous les fermenteurs
@@ -47,17 +48,16 @@ class _FermentersListPageState extends State<FermentersListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fermenteurs'),
-      ),
+    return AppScaffold(
+      currentIndex: NavIndex.fermenters,
+      title: 'Fermenteurs',
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Résumé
                 _buildSummary(),
-                
+
                 // Liste
                 Expanded(
                   child: _fermenters.isEmpty

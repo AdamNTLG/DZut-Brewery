@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(cmd.exe /c \"D:\\\\Flutter\\\\platform-tools-latest-windows\\\\cmdline-tools\\\\latest\\\\bin\\\\sdkmanager.bat --licenses\")",
+      "Bash(cmd.exe /c \"dir D:\\\\Flutter\\\\platform-tools-latest-windows /s /b | findstr sdkmanager\")"
     ]
   }
 }

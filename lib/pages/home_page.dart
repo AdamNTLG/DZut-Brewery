@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../widgets/common/stat_card.dart';
+import '../widgets/common/app_scaffold.dart';
 import '../services/raw_material_service.dart';
 import '../services/recipe_service.dart';
 import '../services/batch_service.dart';
@@ -67,7 +68,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppScaffold(
+      currentIndex: NavIndex.home,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -76,6 +78,7 @@ class _HomePageState extends State<HomePage> {
             const Text(AppConstants.appName),
           ],
         ),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -95,21 +98,20 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     // Statistiques principales
                     _buildStatsGrid(),
-                    
+
                     const SizedBox(height: AppConstants.paddingL),
-                    
+
                     // Brassins actifs
                     _buildActiveBatchesSection(),
-                    
+
                     const SizedBox(height: AppConstants.paddingL),
-                    
+
                     // Accès rapide
                     _buildQuickActionsSection(),
                   ],
                 ),
               ),
             ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -297,50 +299,6 @@ class _HomePageState extends State<HomePage> {
       avatar: Icon(icon, size: 18),
       label: Text(label),
       onPressed: onTap,
-    );
-  }
-
-  Widget _buildBottomNav() {
-    return NavigationBar(
-      selectedIndex: 0,
-      onDestinationSelected: (index) {
-        switch (index) {
-          case 0:
-            // Déjà sur home
-            break;
-          case 1:
-            _navigateTo(const RecipesListPage());
-            break;
-          case 2:
-            _navigateTo(const BatchesListPage());
-            break;
-          case 3:
-            _navigateTo(const RawMaterialsListPage());
-            break;
-        }
-      },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Accueil',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.menu_book_outlined),
-          selectedIcon: Icon(Icons.menu_book),
-          label: 'Recettes',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.science_outlined),
-          selectedIcon: Icon(Icons.science),
-          label: 'Brassins',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.inventory_2_outlined),
-          selectedIcon: Icon(Icons.inventory_2),
-          label: 'Stock',
-        ),
-      ],
     );
   }
 
