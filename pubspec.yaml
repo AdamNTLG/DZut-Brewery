@@ -35,11 +35,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  # Assets (décommenter quand les fichiers sont présents)
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+
+  assets:
+    - assets/images/
 
   # Fonts personnalisées (optionnel - utilise les fonts système par défaut)
   # fonts:

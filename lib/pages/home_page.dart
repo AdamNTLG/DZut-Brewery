@@ -74,7 +74,11 @@ class _HomePageState extends State<HomePage> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('🍺 '),
+            Image.asset(
+              'assets/images/Logo_db.png',
+              height: 36,
+            ),
+            const SizedBox(width: 8),
             const Text(AppConstants.appName),
           ],
         ),
