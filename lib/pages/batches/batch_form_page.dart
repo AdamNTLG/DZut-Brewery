@@ -8,7 +8,7 @@ import '../../services/recipe_service.dart';
 import '../../services/fermenter_service.dart';
 import '../../widgets/common/app_text_field.dart';
 
-/// Page de formulaire pour créer un nouveau brassin
+/// Form page to create a new batch
 class BatchFormPage extends StatefulWidget {
   final String? recipeId;
 
@@ -76,7 +76,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -95,7 +95,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nouveau brassin'),
+        title: const Text('New Batch'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -104,29 +104,29 @@ class _BatchFormPageState extends State<BatchFormPage> {
               child: ListView(
                 padding: const EdgeInsets.all(AppConstants.paddingM),
                 children: [
-                  // Sélection de la recette
+                  // Recipe selection
                   _buildRecipeSelector(),
-                  
+
                   const SizedBox(height: AppConstants.paddingL),
-                  
-                  // Date de brassage
+
+                  // Brew date
                   _buildDateSelector(),
-                  
+
                   const SizedBox(height: AppConstants.paddingM),
-                  
-                  // Sélection du fermenteur
+
+                  // Fermenter selection
                   _buildFermenterSelector(),
-                  
+
                   const SizedBox(height: AppConstants.paddingL),
-                  
-                  // Mesures initiales
-                  _buildSectionTitle('Mesures initiales (optionnel)'),
-                  
+
+                  // Initial measurements
+                  _buildSectionTitle('Initial Measurements (optional)'),
+
                   Row(
                     children: [
                       Expanded(
                         child: AppNumberField(
-                          label: 'Densité initiale (OG)',
+                          label: 'Original Gravity (OG)',
                           controller: _ogController,
                           decimals: 3,
                           hint: '1.050',
@@ -142,20 +142,20 @@ class _BatchFormPageState extends State<BatchFormPage> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: AppConstants.paddingL),
-                  
+
                   // Notes
                   AppTextField(
                     label: 'Notes',
                     controller: _notesController,
                     maxLines: 3,
-                    hint: 'Observations, ajustements...',
+                    hint: 'Observations, adjustments...',
                   ),
-                  
+
                   const SizedBox(height: AppConstants.paddingXL),
-                  
-                  // Bouton de création
+
+                  // Create button
                   SizedBox(
                     height: 50,
                     child: ElevatedButton(
@@ -166,7 +166,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Démarrer le brassin'),
+                          : Text(_brewDate.isAfter(DateTime.now()) ? 'Schedule Batch' : 'Start Brewing'),
                     ),
                   ),
                 ],
@@ -192,7 +192,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Recette *'),
+        _buildSectionTitle('Recipe *'),
         if (_recipes.isEmpty)
           Card(
             child: Padding(
@@ -201,11 +201,11 @@ class _BatchFormPageState extends State<BatchFormPage> {
                 children: [
                   Icon(Icons.menu_book_outlined, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: AppConstants.paddingS),
-                  const Text('Aucune recette disponible'),
+                  const Text('No recipes available'),
                   const SizedBox(height: AppConstants.paddingS),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Créer une recette d\'abord'),
+                    child: const Text('Create a recipe first'),
                   ),
                 ],
               ),
@@ -213,9 +213,9 @@ class _BatchFormPageState extends State<BatchFormPage> {
           )
         else
           DropdownButtonFormField<Recipe>(
-            value: _selectedRecipe,
+            initialValue: _selectedRecipe,
             decoration: const InputDecoration(
-              hintText: 'Sélectionner une recette',
+              hintText: 'Select a recipe',
               filled: true,
               fillColor: Colors.white,
             ),
@@ -232,7 +232,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
               });
             },
             validator: (value) {
-              if (value == null) return 'Veuillez sélectionner une recette';
+              if (value == null) return 'Please select a recipe';
               return null;
             },
           ),
@@ -245,7 +245,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Date de brassage',
+          'Brew Date',
           style: TextStyle(
             fontWeight: FontWeight.w500,
             color: Colors.grey[700],
@@ -275,7 +275,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Fermenteur (optionnel)',
+          'Fermenter (optional)',
           style: TextStyle(
             fontWeight: FontWeight.w500,
             color: Colors.grey[700],
@@ -290,22 +290,22 @@ class _BatchFormPageState extends State<BatchFormPage> {
               fillColor: Colors.white,
             ),
             child: Text(
-              'Aucun fermenteur disponible',
+              'No fermenter available',
               style: TextStyle(color: Colors.grey[600]),
             ),
           )
         else
           DropdownButtonFormField<Fermenter>(
-            value: _selectedFermenter,
+            initialValue: _selectedFermenter,
             decoration: const InputDecoration(
-              hintText: 'Sélectionner un fermenteur',
+              hintText: 'Select a fermenter',
               filled: true,
               fillColor: Colors.white,
             ),
             items: [
               const DropdownMenuItem(
                 value: null,
-                child: Text('Aucun'),
+                child: Text('None'),
               ),
               ..._fermenters.map((f) {
                 return DropdownMenuItem(
@@ -342,35 +342,38 @@ class _BatchFormPageState extends State<BatchFormPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSaving = true);
-    
+
     try {
+      // If brew date is in the future, set status to planned
+      final isPlanned = _brewDate.isAfter(DateTime.now());
+
       final batch = Batch(
         recipeId: _selectedRecipe!.id,
         fermenterId: _selectedFermenter?.id,
         brewDate: _brewDate,
-        status: BatchStatus.brewing,
+        status: isPlanned ? BatchStatus.planned : BatchStatus.brewing,
         actualOg: _parseDouble(_ogController.text),
         actualVolume: _parseDouble(_volumeController.text),
         notes: _notesController.text.trim().isNotEmpty
             ? _notesController.text.trim()
             : null,
       );
-      
+
       await _batchService.create(batch);
-      
+
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Brassin créé !')),
+          SnackBar(content: Text(isPlanned ? 'Batch scheduled!' : 'Batch created!')),
         );
       }
     } catch (e) {
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }

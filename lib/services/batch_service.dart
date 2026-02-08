@@ -2,8 +2,10 @@ import 'package:sqflite/sqflite.dart' hide Batch;
 import '../database/db_helper.dart';
 import '../database/tables/batch_table.dart';
 import '../database/tables/batch_measurement_table.dart';
+import '../database/tables/batch_step_table.dart';
 import '../models/batch.dart';
 import '../models/batch_measurement.dart';
+import '../models/batch_step.dart';
 import 'fermenter_service.dart';
 
 /// Service pour gérer les brassins (CRUD)
@@ -80,7 +82,7 @@ class BatchService {
     return List<Batch>.from(maps.map((map) => Batch.fromMap(map)));
   }
 
-  /// Crée un nouveau brassin
+  /// Creates a new batch
   Future<Batch> create(Batch batch) async {
     final db = await _dbHelper.database;
     await db.insert(
@@ -88,12 +90,12 @@ class BatchService {
       batch.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    
-    // Marquer le fermenteur comme occupé si assigné
-    if (batch.fermenterId != null) {
+
+    // Only mark fermenter as occupied if batch is actively brewing (not planned)
+    if (batch.fermenterId != null && batch.status != BatchStatus.planned) {
       await _fermenterService.setAvailability(batch.fermenterId!, false);
     }
-    
+
     return batch;
   }
 
@@ -109,18 +111,22 @@ class BatchService {
     );
   }
 
-  /// Change le statut d'un brassin
+  /// Updates batch status
   Future<int> updateStatus(String batchId, BatchStatus newStatus) async {
     final db = await _dbHelper.database;
-    
-    // Si le brassin est terminé ou archivé, libérer le fermenteur
-    if (newStatus == BatchStatus.completed || newStatus == BatchStatus.archived) {
-      final batch = await getById(batchId);
-      if (batch?.fermenterId != null) {
-        await _fermenterService.setAvailability(batch!.fermenterId!, true);
+    final batch = await getById(batchId);
+
+    if (batch?.fermenterId != null) {
+      // When starting to brew from planned, mark fermenter as occupied
+      if (batch!.status == BatchStatus.planned && newStatus == BatchStatus.brewing) {
+        await _fermenterService.setAvailability(batch.fermenterId!, false);
+      }
+      // When completed or archived, release the fermenter
+      else if (newStatus == BatchStatus.completed || newStatus == BatchStatus.archived) {
+        await _fermenterService.setAvailability(batch.fermenterId!, true);
       }
     }
-    
+
     return await db.update(
       BatchTable.tableName,
       {
@@ -220,25 +226,92 @@ class BatchService {
   /// Récupère les statistiques des brassins
   Future<Map<String, dynamic>> getStats() async {
     final db = await _dbHelper.database;
-    
+
     final total = Sqflite.firstIntValue(await db.rawQuery(
       'SELECT COUNT(*) FROM ${BatchTable.tableName}'
     )) ?? 0;
-    
+
     final active = Sqflite.firstIntValue(await db.rawQuery('''
       SELECT COUNT(*) FROM ${BatchTable.tableName}
       WHERE status IN ('brewing', 'fermenting', 'conditioning')
     ''')) ?? 0;
-    
+
     final completed = Sqflite.firstIntValue(await db.rawQuery('''
       SELECT COUNT(*) FROM ${BatchTable.tableName}
       WHERE status = 'completed'
     ''')) ?? 0;
-    
+
     return {
       'total': total,
       'active': active,
       'completed': completed,
     };
+  }
+
+  // --- Gestion des étapes de brassage ---
+
+  /// Récupère les étapes d'un brassin
+  Future<List<BatchStep>> getSteps(String batchId) async {
+    final db = await _dbHelper.database;
+    final maps = await db.query(
+      BatchStepTable.tableName,
+      where: '${BatchStepTable.colBatchId} = ?',
+      whereArgs: [batchId],
+      orderBy: '${BatchStepTable.colCreatedAt} ASC',
+    );
+    return List<BatchStep>.from(maps.map((map) => BatchStep.fromMap(map)));
+  }
+
+  /// Sauvegarde les étapes d'un brassin (remplace toutes les étapes existantes)
+  Future<void> saveSteps(String batchId, List<BatchStep> steps) async {
+    final db = await _dbHelper.database;
+
+    // Supprimer les anciennes étapes
+    await db.delete(
+      BatchStepTable.tableName,
+      where: '${BatchStepTable.colBatchId} = ?',
+      whereArgs: [batchId],
+    );
+
+    // Insérer les nouvelles étapes
+    for (final step in steps) {
+      await db.insert(
+        BatchStepTable.tableName,
+        step.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+  }
+
+  /// Ajoute une étape
+  Future<BatchStep> addStep(BatchStep step) async {
+    final db = await _dbHelper.database;
+    await db.insert(
+      BatchStepTable.tableName,
+      step.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return step;
+  }
+
+  /// Met à jour une étape
+  Future<int> updateStep(BatchStep step) async {
+    final db = await _dbHelper.database;
+    return await db.update(
+      BatchStepTable.tableName,
+      step.toMap(),
+      where: '${BatchStepTable.colId} = ?',
+      whereArgs: [step.id],
+    );
+  }
+
+  /// Supprime une étape
+  Future<int> deleteStep(String stepId) async {
+    final db = await _dbHelper.database;
+    return await db.delete(
+      BatchStepTable.tableName,
+      where: '${BatchStepTable.colId} = ?',
+      whereArgs: [stepId],
+    );
   }
 }

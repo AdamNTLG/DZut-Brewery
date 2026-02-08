@@ -74,7 +74,7 @@ class MashStep {
   /// Affichage formaté
   String get displayText {
     final tempStr = '${temperature.toStringAsFixed(0)}°C';
-    final timeStr = '${durationMin} min';
+    final timeStr = '$durationMin min';
     final descStr = description ?? _getDefaultDescription();
     return '$descStr - $tempStr pendant $timeStr';
   }

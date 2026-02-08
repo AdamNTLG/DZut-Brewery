@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-/// Statuts d'un brassin
+/// Batch status
 enum BatchStatus {
   planned,
   brewing,
@@ -12,17 +12,17 @@ enum BatchStatus {
   String get label {
     switch (this) {
       case BatchStatus.planned:
-        return 'Planifié';
+        return 'Planned';
       case BatchStatus.brewing:
-        return 'En brassage';
+        return 'Brewing';
       case BatchStatus.fermenting:
-        return 'En fermentation';
+        return 'Fermenting';
       case BatchStatus.conditioning:
-        return 'En garde';
+        return 'Conditioning';
       case BatchStatus.completed:
-        return 'Terminé';
+        return 'Completed';
       case BatchStatus.archived:
-        return 'Archivé';
+        return 'Archived';
     }
   }
 

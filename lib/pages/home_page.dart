@@ -12,7 +12,7 @@ import 'recipes/recipes_list_page.dart';
 import 'batches/batches_list_page.dart';
 import 'fermenters/fermenters_list_page.dart';
 
-/// Page d'accueil avec tableau de bord
+/// Home page with dashboard
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -60,7 +60,7 @@ class _HomePageState extends State<HomePage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur de chargement: $e')),
+          SnackBar(content: Text('Loading error: $e')),
         );
       }
     }
@@ -100,17 +100,17 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Statistiques principales
+                    // Main statistics
                     _buildStatsGrid(),
 
                     const SizedBox(height: AppConstants.paddingL),
 
-                    // Brassins actifs
+                    // Active batches
                     _buildActiveBatchesSection(),
 
                     const SizedBox(height: AppConstants.paddingL),
 
-                    // Accès rapide
+                    // Quick actions
                     _buildQuickActionsSection(),
                   ],
                 ),
@@ -129,28 +129,28 @@ class _HomePageState extends State<HomePage> {
       childAspectRatio: 1.3,
       children: [
         StatCard(
-          title: 'Recettes',
+          title: 'Recipes',
           value: '$_recipesCount',
           icon: Icons.menu_book,
           color: AppConstants.primaryColor,
           onTap: () => _navigateTo(const RecipesListPage()),
         ),
         StatCard(
-          title: 'Ingrédients',
+          title: 'Ingredients',
           value: '$_materialsCount',
           icon: Icons.inventory_2,
           color: AppConstants.secondaryColor,
           onTap: () => _navigateTo(const RawMaterialsListPage()),
         ),
         StatCard(
-          title: 'Brassins actifs',
+          title: 'Active Batches',
           value: '$_activeBatchesCount',
           icon: Icons.science,
           color: Colors.blue,
           onTap: () => _navigateTo(const BatchesListPage()),
         ),
         StatCard(
-          title: 'Fermenteurs libres',
+          title: 'Available Fermenters',
           value: '$_fermentersAvailable',
           icon: Icons.water_drop,
           color: Colors.purple,
@@ -168,7 +168,7 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Brassins en cours',
+              'Active Batches',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -176,7 +176,7 @@ class _HomePageState extends State<HomePage> {
             if (_activeBatches.isNotEmpty)
               TextButton(
                 onPressed: () => _navigateTo(const BatchesListPage()),
-                child: const Text('Voir tout'),
+                child: const Text('View all'),
               ),
           ],
         ),
@@ -195,14 +195,14 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: AppConstants.paddingS),
                     Text(
-                      'Aucun brassin en cours',
+                      'No active batches',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: AppConstants.paddingS),
                     TextButton.icon(
                       onPressed: () => _navigateTo(const BatchesListPage()),
                       icon: const Icon(Icons.add),
-                      label: const Text('Créer un brassin'),
+                      label: const Text('Create a batch'),
                     ),
                   ],
                 ),
@@ -234,11 +234,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         title: Text(
-          batch.recipeName ?? 'Brassin #${batch.id.substring(0, 6)}',
+          batch.recipeName ?? 'Batch #${batch.id.substring(0, 6)}',
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
         subtitle: Text(
-          '${batch.status.label} • Jour ${batch.daysSinceBrew}',
+          '${batch.status.label} • Day ${batch.daysSinceBrew}',
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
@@ -246,7 +246,7 @@ class _HomePageState extends State<HomePage> {
           color: Colors.grey[400],
         ),
         onTap: () {
-          // TODO: Navigation vers détail brassin
+          // TODO: Navigate to batch detail
         },
       ),
     );
@@ -257,7 +257,7 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Actions rapides',
+          'Quick Actions',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -269,23 +269,23 @@ class _HomePageState extends State<HomePage> {
           children: [
             _buildQuickActionChip(
               icon: Icons.add_circle,
-              label: 'Nouvelle recette',
+              label: 'New Recipe',
               onTap: () {
-                // TODO: Créer recette
+                // TODO: Create recipe
               },
             ),
             _buildQuickActionChip(
               icon: Icons.play_arrow,
-              label: 'Démarrer un brassin',
+              label: 'Start a Batch',
               onTap: () {
-                // TODO: Nouveau brassin
+                // TODO: New batch
               },
             ),
             _buildQuickActionChip(
               icon: Icons.add_shopping_cart,
-              label: 'Ajouter ingrédient',
+              label: 'Add Ingredient',
               onTap: () {
-                // TODO: Ajouter matière première
+                // TODO: Add raw material
               },
             ),
           ],

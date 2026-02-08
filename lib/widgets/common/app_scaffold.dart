@@ -5,7 +5,7 @@ import '../../pages/batches/batches_list_page.dart';
 import '../../pages/raw_materials/raw_materials_list_page.dart';
 import '../../pages/fermenters/fermenters_list_page.dart';
 
-/// Index des pages principales dans la navigation
+/// Main page indices for navigation
 enum NavIndex {
   home(0),
   recipes(1),
@@ -17,7 +17,7 @@ enum NavIndex {
   final int value;
 }
 
-/// Scaffold commun avec la barre de navigation
+/// Common scaffold with navigation bar
 class AppScaffold extends StatelessWidget {
   final NavIndex currentIndex;
   final String? title;
@@ -60,17 +60,17 @@ class AppScaffold extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.home_outlined),
           selectedIcon: Icon(Icons.home),
-          label: 'Accueil',
+          label: 'Home',
         ),
         NavigationDestination(
           icon: Icon(Icons.menu_book_outlined),
           selectedIcon: Icon(Icons.menu_book),
-          label: 'Recettes',
+          label: 'Recipes',
         ),
         NavigationDestination(
           icon: Icon(Icons.science_outlined),
           selectedIcon: Icon(Icons.science),
-          label: 'Brassins',
+          label: 'Batches',
         ),
         NavigationDestination(
           icon: Icon(Icons.inventory_2_outlined),
@@ -80,7 +80,7 @@ class AppScaffold extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.water_drop_outlined),
           selectedIcon: Icon(Icons.water_drop),
-          label: 'Fermenteurs',
+          label: 'Fermenters',
         ),
       ],
     );

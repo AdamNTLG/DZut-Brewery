@@ -7,7 +7,7 @@ import '../../widgets/common/app_scaffold.dart';
 import 'batch_form_page.dart';
 import 'batch_detail_page.dart';
 
-/// Page listant tous les brassins
+/// Page listing all batches
 class BatchesListPage extends StatefulWidget {
   const BatchesListPage({super.key});
 
@@ -48,7 +48,7 @@ class _BatchesListPageState extends State<BatchesListPage>
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -82,14 +82,14 @@ class _BatchesListPageState extends State<BatchesListPage>
     return AppScaffold(
       currentIndex: NavIndex.batches,
       appBar: AppBar(
-        title: const Text('Mes brassins'),
+        title: const Text('My Batches'),
         automaticallyImplyLeading: false,
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: 'En cours (${active.length})'),
-            Tab(text: 'Planifiés (${planned.length})'),
-            Tab(text: 'Terminés (${completed.length})'),
+            Tab(text: 'Active (${active.length})'),
+            Tab(text: 'Planned (${planned.length})'),
+            Tab(text: 'Completed (${completed.length})'),
           ],
         ),
       ),
@@ -98,15 +98,15 @@ class _BatchesListPageState extends State<BatchesListPage>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildBatchList(active, 'Aucun brassin en cours'),
-                _buildBatchList(planned, 'Aucun brassin planifié'),
-                _buildBatchList(completed, 'Aucun brassin terminé'),
+                _buildBatchList(active, 'No active batches'),
+                _buildBatchList(planned, 'No planned batches'),
+                _buildBatchList(completed, 'No completed batches'),
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createBatch,
         icon: const Icon(Icons.add),
-        label: const Text('Nouveau brassin'),
+        label: const Text('New Batch'),
       ),
     );
   }
@@ -197,7 +197,9 @@ class _BatchesListPageState extends State<BatchesListPage>
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Jour ${batch.daysSinceBrew}',
+                              batch.status == BatchStatus.planned
+                                  ? 'Scheduled'
+                                  : 'Day ${batch.daysSinceBrew}',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 12,
@@ -236,7 +238,9 @@ class _BatchesListPageState extends State<BatchesListPage>
                   Icon(Icons.calendar_today, size: 14, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Text(
-                    'Brassé le ${Formatters.formatDate(batch.brewDate)}',
+                    batch.status == BatchStatus.planned
+                        ? 'Scheduled for ${Formatters.formatDate(batch.brewDate)}'
+                        : 'Brewed on ${Formatters.formatDate(batch.brewDate)}',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],

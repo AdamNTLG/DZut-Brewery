@@ -10,6 +10,7 @@ import 'tables/recipe_addition_table.dart';
 import 'tables/fermenter_table.dart';
 import 'tables/batch_table.dart';
 import 'tables/batch_measurement_table.dart';
+import 'tables/batch_step_table.dart';
 
 /// Singleton pour gérer la base de données SQLite
 /// 
@@ -19,7 +20,7 @@ import 'tables/batch_measurement_table.dart';
 /// ```
 class DBHelper {
   static const String _databaseName = 'brewmaster.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   // Singleton pattern
   DBHelper._privateConstructor();
@@ -71,6 +72,7 @@ class DBHelper {
     // Tables de suivi
     await db.execute(BatchTable.createTable);
     await db.execute(BatchMeasurementTable.createTable);
+    await db.execute(BatchStepTable.createTable);
 
     // Création des index pour optimiser les requêtes
     await _createIndexes(db);
@@ -81,10 +83,13 @@ class DBHelper {
 
   /// Gère les migrations de version
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Migration v1 -> v2 (exemple pour futures versions)
-    // if (oldVersion < 2) {
-    //   await db.execute('ALTER TABLE recipes ADD COLUMN new_field TEXT');
-    // }
+    // Migration v1 -> v2: Ajout de la table des étapes de brassins
+    if (oldVersion < 2) {
+      await db.execute(BatchStepTable.createTable);
+      await db.execute(
+        'CREATE INDEX idx_batch_steps_batch ON ${BatchStepTable.tableName}(batch_id)'
+      );
+    }
   }
 
   /// Crée les index pour optimiser les performances
@@ -110,6 +115,11 @@ class DBHelper {
     // Index sur les mesures
     await db.execute(
       'CREATE INDEX idx_measurements_batch ON ${BatchMeasurementTable.tableName}(batch_id)'
+    );
+
+    // Index sur les étapes de brassins
+    await db.execute(
+      'CREATE INDEX idx_batch_steps_batch ON ${BatchStepTable.tableName}(batch_id)'
     );
   }
 

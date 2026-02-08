@@ -1,4 +1,4 @@
-/// Export de tous les modèles de l'application BrewMaster
+/// Export de tous les modèles de l'application D'Zut Brewery
 library models;
 
 export 'raw_material.dart';
@@ -11,3 +11,5 @@ export 'recipe_addition.dart';
 export 'fermenter.dart';
 export 'batch.dart';
 export 'batch_measurement.dart';
+export 'batch_step.dart';
+export 'beer_style.dart';

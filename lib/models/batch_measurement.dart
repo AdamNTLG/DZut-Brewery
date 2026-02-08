@@ -81,7 +81,7 @@ class BatchMeasurement {
   String get displayText {
     final parts = <String>[];
     if (temperature != null) parts.add('${temperature!.toStringAsFixed(1)}°C');
-    if (gravity != null) parts.add('${gravity!.toStringAsFixed(3)}');
+    if (gravity != null) parts.add(gravity!.toStringAsFixed(3));
     if (ph != null) parts.add('pH ${ph!.toStringAsFixed(1)}');
     return parts.join(' | ');
   }

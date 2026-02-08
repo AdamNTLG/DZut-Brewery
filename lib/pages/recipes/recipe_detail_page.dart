@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
+import '../../constants/beer_styles.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/common/beer_color_indicator.dart';
+import '../../widgets/brewing/style_gauge.dart';
 import '../../utils/formatters.dart';
 import 'recipe_form_page.dart';
 import 'recipe_ingredients_page.dart';
@@ -119,15 +121,34 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Widget _buildContent() {
     final r = _recipe!;
-    
+
+    // Trouver le style BJCP correspondant
+    BeerStyle? style;
+    if (r.recipe.beerStyle != null) {
+      style = BeerStyles.findByName(r.recipe.beerStyle!);
+    }
+
     return ListView(
       padding: const EdgeInsets.all(AppConstants.paddingM),
       children: [
         // En-tête avec caractéristiques
         _buildHeader(r),
-        
-        const SizedBox(height: AppConstants.paddingL),
-        
+
+        const SizedBox(height: AppConstants.paddingM),
+
+        // Jauges de style BJCP
+        if (style != null)
+          StyleGaugesCard(
+            style: style,
+            og: r.recipe.targetOg,
+            fg: r.recipe.targetFg,
+            ibu: r.recipe.targetIbu,
+            ebc: r.recipe.targetEbc,
+            abv: r.recipe.targetAbv,
+          ),
+
+        const SizedBox(height: AppConstants.paddingM),
+
         // Paliers d'empâtage
         if (r.mashSteps.isNotEmpty) ...[
           _buildSection(
@@ -335,7 +356,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           subtitle: LinearProgressIndicator(
             value: percentage / 100,
             backgroundColor: Colors.grey[200],
-            valueColor: AlwaysStoppedAnimation(AppConstants.grainColor),
+            valueColor: const AlwaysStoppedAnimation(AppConstants.grainColor),
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -377,8 +398,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ),
           title: Text(hop.materialName ?? 'Houblon inconnu'),
           subtitle: Text(
-            '${hop.timeValue.toStringAsFixed(0)} ${hop.hopUse.timeUnit}' +
-            (hop.materialAlphaAcid != null ? ' • ${hop.materialAlphaAcid}% AA' : ''),
+            '${hop.timeValue.toStringAsFixed(0)} ${hop.hopUse.timeUnit}${hop.materialAlphaAcid != null ? ' • ${hop.materialAlphaAcid}% AA' : ''}',
           ),
           trailing: Text(
             '${hop.quantityG.toStringAsFixed(0)} g',
@@ -396,8 +416,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           leading: const Icon(Icons.bubble_chart, color: AppConstants.yeastColor),
           title: Text(yeast.materialName ?? 'Levure inconnue'),
           subtitle: Text(
-            '${yeast.form.label}' +
-            (yeast.materialAttenuation != null ? ' • ${yeast.materialAttenuation}% att.' : ''),
+            '${yeast.form.label}${yeast.materialAttenuation != null ? ' • ${yeast.materialAttenuation}% att.' : ''}',
           ),
           trailing: Text(
             '${yeast.quantity.toStringAsFixed(0)} ${yeast.unit}',

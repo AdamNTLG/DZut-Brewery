@@ -131,7 +131,7 @@ class _FermenterFormPageState extends State<FermenterFormPage> {
               onChanged: (value) {
                 setState(() => _isAvailable = value);
               },
-              activeColor: AppConstants.primaryColor,
+              activeThumbColor: AppConstants.primaryColor,
             ),
             
             const SizedBox(height: AppConstants.paddingM),

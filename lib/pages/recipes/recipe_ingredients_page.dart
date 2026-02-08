@@ -505,7 +505,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<RawMaterial>(
-                  value: selected,
+                  initialValue: selected,
                   hint: const Text('Sélectionner un malt'),
                   items: materials.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
                   onChanged: (m) => setState(() => selected = m),
@@ -586,7 +586,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<RawMaterial>(
-                  value: selected,
+                  initialValue: selected,
                   hint: const Text('Sélectionner un houblon'),
                   items: materials.map((m) => DropdownMenuItem(value: m, child: Text('${m.name} (${m.alphaAcid}% AA)'))).toList(),
                   onChanged: (m) => setState(() => selected = m),
@@ -594,7 +594,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                 ),
                 const SizedBox(height: AppConstants.paddingM),
                 DropdownButtonFormField<HopUse>(
-                  value: hopUse,
+                  initialValue: hopUse,
                   items: HopUse.values.map((u) => DropdownMenuItem(value: u, child: Text(u.label))).toList(),
                   onChanged: (u) => setState(() => hopUse = u!),
                   decoration: const InputDecoration(labelText: 'Utilisation'),
@@ -682,7 +682,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<RawMaterial>(
-                  value: selected,
+                  initialValue: selected,
                   hint: const Text('Sélectionner une levure'),
                   items: materials.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
                   onChanged: (m) => setState(() => selected = m),
@@ -695,7 +695,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                     const SizedBox(width: AppConstants.paddingM),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: unit,
+                        initialValue: unit,
                         items: const [
                           DropdownMenuItem(value: 'g', child: Text('grammes')),
                           DropdownMenuItem(value: 'ml', child: Text('ml')),
@@ -778,7 +778,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
               children: [
                 if (materials.isNotEmpty)
                   DropdownButtonFormField<RawMaterial>(
-                    value: selected,
+                    initialValue: selected,
                     hint: const Text('Sélectionner (optionnel)'),
                     items: [
                       const DropdownMenuItem(value: null, child: Text('Autre (saisie manuelle)')),
@@ -793,7 +793,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                 ],
                 const SizedBox(height: AppConstants.paddingM),
                 DropdownButtonFormField<AdditionStep>(
-                  value: step,
+                  initialValue: step,
                   items: AdditionStep.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                   onChanged: (s) => setState(() => step = s!),
                   decoration: const InputDecoration(labelText: 'Étape'),
@@ -805,7 +805,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                     const SizedBox(width: AppConstants.paddingM),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: unit,
+                        initialValue: unit,
                         items: const [
                           DropdownMenuItem(value: 'g', child: Text('g')),
                           DropdownMenuItem(value: 'ml', child: Text('ml')),

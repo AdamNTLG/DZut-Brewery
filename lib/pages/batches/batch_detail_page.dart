@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../models/batch.dart';
 import '../../models/batch_measurement.dart';
+import '../../models/batch_step.dart';
 import '../../services/batch_service.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/brewing/batch_steps_card.dart';
 import '../../widgets/common/app_text_field.dart';
 
-/// Page affichant le détail et le suivi d'un brassin
+/// Batch detail and tracking page
 class BatchDetailPage extends StatefulWidget {
   final String batchId;
 
@@ -18,9 +20,10 @@ class BatchDetailPage extends StatefulWidget {
 
 class _BatchDetailPageState extends State<BatchDetailPage> {
   final _service = BatchService();
-  
+
   Batch? _batch;
   List<BatchMeasurement> _measurements = [];
+  List<BatchStep> _steps = [];
   bool _isLoading = true;
 
   @override
@@ -34,17 +37,19 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     try {
       final batch = await _service.getById(widget.batchId);
       final measurements = await _service.getMeasurements(widget.batchId);
-      
+      final steps = await _service.getSteps(widget.batchId);
+
       setState(() {
         _batch = batch;
         _measurements = measurements;
+        _steps = steps;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -54,14 +59,14 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_batch?.recipeName ?? 'Brassin'),
+        title: Text(_batch?.recipeName ?? 'Batch'),
         actions: [
-          if (_batch != null && _batch!.status.nextStatus != null)
+          if (_batch != null && _batch!.status != BatchStatus.planned && _batch!.status.nextStatus != null)
             TextButton.icon(
               onPressed: _advanceStatus,
               icon: const Icon(Icons.arrow_forward, color: Colors.white),
               label: Text(
-                'Passer à ${_batch!.status.nextStatus!.label}',
+                'Move to ${_batch!.status.nextStatus!.label}',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
@@ -70,21 +75,39 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _batch == null
-              ? const Center(child: Text('Brassin non trouvé'))
+              ? const Center(child: Text('Batch not found'))
               : RefreshIndicator(
                   onRefresh: _loadData,
                   child: _buildContent(),
                 ),
-      floatingActionButton: _batch != null &&
-              (_batch!.status == BatchStatus.fermenting ||
-               _batch!.status == BatchStatus.conditioning)
-          ? FloatingActionButton.extended(
-              onPressed: _addMeasurement,
-              icon: const Icon(Icons.add),
-              label: const Text('Mesure'),
-            )
-          : null,
+      floatingActionButton: _buildFAB(),
     );
+  }
+
+  Widget? _buildFAB() {
+    if (_batch == null) return null;
+
+    // For planned batches: Start Brewing button
+    if (_batch!.status == BatchStatus.planned) {
+      return FloatingActionButton.extended(
+        onPressed: _startBrewing,
+        icon: const Icon(Icons.play_arrow),
+        label: const Text('Start Brewing'),
+        backgroundColor: AppConstants.primaryColor,
+      );
+    }
+
+    // For fermenting/conditioning: Add Measurement button
+    if (_batch!.status == BatchStatus.fermenting ||
+        _batch!.status == BatchStatus.conditioning) {
+      return FloatingActionButton.extended(
+        onPressed: _addMeasurement,
+        icon: const Icon(Icons.add),
+        label: const Text('Measurement'),
+      );
+    }
+
+    return null;
   }
 
   Widget _buildContent() {
@@ -98,15 +121,26 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
         
         // Caractéristiques mesurées
         _buildMeasurementsCard(),
-        
+
         const SizedBox(height: AppConstants.paddingM),
-        
+
+        // Étapes du brassage
+        BatchStepsCard(
+          steps: _steps,
+          onAddStep: _addStep,
+          onStartStep: _startStep,
+          onEndStep: _endStep,
+          onEditStep: _editStep,
+        ),
+
+        const SizedBox(height: AppConstants.paddingM),
+
         // Historique des mesures
         if (_measurements.isNotEmpty) ...[
           _buildMeasurementsHistory(),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
+
         // Actions
         _buildActionsCard(),
         
@@ -160,14 +194,18 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Jour ${_batch!.daysSinceBrew}',
+                        _batch!.status == BatchStatus.planned
+                            ? 'Scheduled'
+                            : 'Day ${_batch!.daysSinceBrew}',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        'Brassé le ${Formatters.formatDate(_batch!.brewDate)}',
+                        _batch!.status == BatchStatus.planned
+                            ? 'Scheduled for ${Formatters.formatDate(_batch!.brewDate)}'
+                            : 'Brewed on ${Formatters.formatDate(_batch!.brewDate)}',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
@@ -181,7 +219,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.water_drop),
-                title: const Text('Fermenteur'),
+                title: const Text('Fermenter'),
                 trailing: Text(
                   _batch!.fermenterName!,
                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -203,7 +241,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Mesures',
+              'Measurements',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -212,9 +250,9 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
             const SizedBox(height: AppConstants.paddingM),
             Row(
               children: [
-                Expanded(child: _buildMeasureBox('DI (OG)', Formatters.formatGravity(_batch!.actualOg))),
+                Expanded(child: _buildMeasureBox('OG', Formatters.formatGravity(_batch!.actualOg))),
                 const SizedBox(width: AppConstants.paddingS),
-                Expanded(child: _buildMeasureBox('DF (FG)', Formatters.formatGravity(_batch!.actualFg))),
+                Expanded(child: _buildMeasureBox('FG', Formatters.formatGravity(_batch!.actualFg))),
                 const SizedBox(width: AppConstants.paddingS),
                 Expanded(child: _buildMeasureBox('ABV', Formatters.formatAbv(_batch!.calculatedAbv))),
               ],
@@ -271,7 +309,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
           const Padding(
             padding: EdgeInsets.all(AppConstants.paddingM),
             child: Text(
-              'Historique des mesures',
+              'Measurement History',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -321,19 +359,19 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
             ),
             const SizedBox(height: AppConstants.paddingM),
             
-            // Mettre à jour l'OG
+            // Update OG
             if (_batch!.actualOg == null)
               ListTile(
                 leading: const Icon(Icons.science),
-                title: const Text('Enregistrer la densité initiale'),
+                title: const Text('Record initial gravity'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: _updateOG,
               ),
-            
-            // Supprimer
+
+            // Delete
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Supprimer ce brassin', style: TextStyle(color: Colors.red)),
+              title: const Text('Delete this batch', style: TextStyle(color: Colors.red)),
               onTap: _confirmDelete,
             ),
           ],
@@ -342,28 +380,63 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     );
   }
 
-  Future<void> _advanceStatus() async {
-    final nextStatus = _batch!.status.nextStatus;
-    if (nextStatus == null) return;
-    
+  Future<void> _startBrewing() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Changer le statut'),
-        content: Text('Passer le brassin à "${nextStatus.label}" ?'),
+        title: const Text('Start Brewing'),
+        content: const Text('Start brewing this batch now? This will mark the fermenter as in use.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirmer'),
+            child: const Text('Start'),
           ),
         ],
       ),
     );
-    
+
+    if (confirm == true) {
+      await _service.updateStatus(widget.batchId, BatchStatus.brewing);
+      // Add default mashing step to start
+      final mashingStep = BatchStep(
+        batchId: widget.batchId,
+        type: StepType.mashing,
+        actualStart: DateTime.now(),
+      );
+      setState(() {
+        _steps = [mashingStep, ..._steps];
+      });
+      await _service.saveSteps(widget.batchId, _steps);
+      _loadData();
+    }
+  }
+
+  Future<void> _advanceStatus() async {
+    final nextStatus = _batch!.status.nextStatus;
+    if (nextStatus == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Status'),
+        content: Text('Move batch to "${nextStatus.label}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
     if (confirm == true) {
       await _service.updateStatus(widget.batchId, nextStatus);
       _loadData();
@@ -375,23 +448,23 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     final gravityController = TextEditingController();
     final phController = TextEditingController();
     final notesController = TextEditingController();
-    
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nouvelle mesure'),
+        title: const Text('New Measurement'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppNumberField(
-                label: 'Température (°C)',
+                label: 'Temperature (°C)',
                 controller: tempController,
                 decimals: 1,
               ),
               const SizedBox(height: AppConstants.paddingM),
               AppNumberField(
-                label: 'Densité',
+                label: 'Gravity',
                 controller: gravityController,
                 decimals: 3,
                 hint: '1.010',
@@ -414,16 +487,16 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Enregistrer'),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
-    
+
     if (result == true) {
       final measurement = BatchMeasurement(
         batchId: widget.batchId,
@@ -433,7 +506,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
         ph: double.tryParse(phController.text.replaceAll(',', '.')),
         notes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
       );
-      
+
       await _service.addMeasurement(measurement);
       _loadData();
     }
@@ -441,11 +514,11 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
 
   Future<void> _updateOG() async {
     final controller = TextEditingController();
-    
+
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Densité initiale'),
+        title: const Text('Initial Gravity'),
         content: AppNumberField(
           label: 'OG',
           controller: controller,
@@ -455,16 +528,16 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Enregistrer'),
+            child: const Text('Save'),
           ),
         ],
       ),
     );
-    
+
     if (result != null && result.isNotEmpty) {
       final og = double.tryParse(result.replaceAll(',', '.'));
       if (og != null) {
@@ -478,22 +551,22 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Supprimer cette mesure ?'),
+        title: const Text('Delete'),
+        content: const Text('Delete this measurement?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
-    
+
     if (confirm == true) {
       await _service.deleteMeasurement(m.id);
       _loadData();
@@ -504,12 +577,12 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Voulez-vous supprimer ce brassin et toutes ses mesures ?'),
+        title: const Text('Delete'),
+        content: const Text('Delete this batch and all its measurements?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
@@ -520,10 +593,59 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
+  }
+
+  // ========== Step Management ==========
+
+  Future<void> _addStep() async {
+    final result = await showDialog<BatchStep>(
+      context: context,
+      builder: (context) => BatchStepDialog(batchId: widget.batchId),
+    );
+
+    if (result != null) {
+      setState(() {
+        _steps = [..._steps, result];
+      });
+      await _service.saveSteps(widget.batchId, _steps);
+    }
+  }
+
+  Future<void> _startStep(BatchStep step) async {
+    final updatedStep = step.copyWith(actualStart: DateTime.now());
+    setState(() {
+      _steps = _steps.map((s) => s.id == step.id ? updatedStep : s).toList();
+    });
+    await _service.saveSteps(widget.batchId, _steps);
+  }
+
+  Future<void> _endStep(BatchStep step) async {
+    final updatedStep = step.copyWith(actualEnd: DateTime.now());
+    setState(() {
+      _steps = _steps.map((s) => s.id == step.id ? updatedStep : s).toList();
+    });
+    await _service.saveSteps(widget.batchId, _steps);
+  }
+
+  Future<void> _editStep(BatchStep step) async {
+    final result = await showDialog<BatchStep>(
+      context: context,
+      builder: (context) => BatchStepDialog(
+        batchId: widget.batchId,
+        step: step,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _steps = _steps.map((s) => s.id == step.id ? result : s).toList();
+      });
+      await _service.saveSteps(widget.batchId, _steps);
+    }
   }
 }
