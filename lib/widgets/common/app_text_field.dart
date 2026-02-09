@@ -59,6 +59,7 @@ class AppTextField extends StatelessWidget {
           onSaved: onSaved,
           maxLines: maxLines,
           enabled: enabled,
+          style: const TextStyle(color: AppConstants.textColor),
           decoration: InputDecoration(
             hintText: hint,
             suffixIcon: suffix,
@@ -127,7 +128,7 @@ class AppNumberField extends StatelessWidget {
           validator: validator ?? (value) {
             if (value == null || value.isEmpty) return null;
             final number = double.tryParse(value.replaceAll(',', '.'));
-            if (number == null) return 'Nombre invalide';
+            if (number == null) return 'Invalid number';
             if (min != null && number < min!) return 'Min: $min';
             if (max != null && number > max!) return 'Max: $max';
             return null;
@@ -139,6 +140,7 @@ class AppNumberField extends StatelessWidget {
             }
           },
           enabled: enabled,
+          style: const TextStyle(color: AppConstants.textColor),
           decoration: InputDecoration(
             hintText: hint,
             suffixText: unit,
@@ -189,6 +191,7 @@ class AppDropdown<T> extends StatelessWidget {
           items: items,
           onChanged: enabled ? onChanged : null,
           hint: hint != null ? Text(hint!) : null,
+          style: const TextStyle(color: AppConstants.textColor),
           decoration: InputDecoration(
             filled: true,
             fillColor: enabled ? Colors.white : Colors.grey[100],

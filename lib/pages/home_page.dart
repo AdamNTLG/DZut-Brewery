@@ -139,14 +139,14 @@ class _HomePageState extends State<HomePage> {
           title: 'Ingredients',
           value: '$_materialsCount',
           icon: Icons.inventory_2,
-          color: AppConstants.secondaryColor,
+          color: AppConstants.primaryDark,
           onTap: () => _navigateTo(const RawMaterialsListPage()),
         ),
         StatCard(
           title: 'Active Batches',
           value: '$_activeBatchesCount',
           icon: Icons.science,
-          color: Colors.blue,
+          color: Colors.green,
           onTap: () => _navigateTo(const BatchesListPage()),
         ),
         StatCard(
