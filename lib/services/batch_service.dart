@@ -3,9 +3,11 @@ import '../database/db_helper.dart';
 import '../database/tables/batch_table.dart';
 import '../database/tables/batch_measurement_table.dart';
 import '../database/tables/batch_step_table.dart';
+import '../database/tables/batch_hop_addition_table.dart';
 import '../models/batch.dart';
 import '../models/batch_measurement.dart';
 import '../models/batch_step.dart';
+import '../models/batch_hop_addition.dart';
 import 'fermenter_service.dart';
 
 /// Service pour gérer les brassins (CRUD)
@@ -313,5 +315,95 @@ class BatchService {
       where: '${BatchStepTable.colId} = ?',
       whereArgs: [stepId],
     );
+  }
+
+  // --- Hop Additions Management ---
+
+  /// Gets all hop additions for a batch
+  Future<List<BatchHopAddition>> getHopAdditions(String batchId) async {
+    final db = await _dbHelper.database;
+    final maps = await db.query(
+      BatchHopAdditionTable.tableName,
+      where: '${BatchHopAdditionTable.colBatchId} = ?',
+      whereArgs: [batchId],
+      orderBy: '${BatchHopAdditionTable.colCreatedAt} ASC',
+    );
+    return List<BatchHopAddition>.from(
+      maps.map((map) => BatchHopAddition.fromMap(map)),
+    );
+  }
+
+  /// Adds a hop addition
+  Future<BatchHopAddition> addHopAddition(BatchHopAddition addition) async {
+    final db = await _dbHelper.database;
+    await db.insert(
+      BatchHopAdditionTable.tableName,
+      addition.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return addition;
+  }
+
+  /// Updates a hop addition
+  Future<int> updateHopAddition(BatchHopAddition addition) async {
+    final db = await _dbHelper.database;
+    return await db.update(
+      BatchHopAdditionTable.tableName,
+      addition.toMap(),
+      where: '${BatchHopAdditionTable.colId} = ?',
+      whereArgs: [addition.id],
+    );
+  }
+
+  /// Marks a hop addition as added
+  Future<int> markHopAdditionAdded(String additionId) async {
+    final db = await _dbHelper.database;
+    return await db.update(
+      BatchHopAdditionTable.tableName,
+      {
+        BatchHopAdditionTable.colAddedAt: DateTime.now().toIso8601String(),
+        BatchHopAdditionTable.colUpdatedAt: DateTime.now().toIso8601String(),
+      },
+      where: '${BatchHopAdditionTable.colId} = ?',
+      whereArgs: [additionId],
+    );
+  }
+
+  /// Marks a dry hop addition as removed
+  Future<int> markHopAdditionRemoved(String additionId) async {
+    final db = await _dbHelper.database;
+    return await db.update(
+      BatchHopAdditionTable.tableName,
+      {
+        BatchHopAdditionTable.colRemovedAt: DateTime.now().toIso8601String(),
+        BatchHopAdditionTable.colUpdatedAt: DateTime.now().toIso8601String(),
+      },
+      where: '${BatchHopAdditionTable.colId} = ?',
+      whereArgs: [additionId],
+    );
+  }
+
+  /// Deletes a hop addition
+  Future<int> deleteHopAddition(String additionId) async {
+    final db = await _dbHelper.database;
+    return await db.delete(
+      BatchHopAdditionTable.tableName,
+      where: '${BatchHopAdditionTable.colId} = ?',
+      whereArgs: [additionId],
+    );
+  }
+
+  /// Gets hop additions that need attention based on current batch day
+  Future<List<BatchHopAddition>> getPendingHopAdditions(
+    String batchId,
+    int currentDay,
+  ) async {
+    final additions = await getHopAdditions(batchId);
+    return additions.where((a) {
+      if (a.type == HopAdditionType.dryHop) {
+        return a.shouldAddDryHop(currentDay) || a.shouldRemoveDryHop(currentDay);
+      }
+      return a.status == HopAdditionStatus.pending;
+    }).toList();
   }
 }

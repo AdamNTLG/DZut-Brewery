@@ -3,9 +3,11 @@ import '../../constants/app_constants.dart';
 import '../../models/batch.dart';
 import '../../models/batch_measurement.dart';
 import '../../models/batch_step.dart';
+import '../../models/batch_hop_addition.dart';
 import '../../services/batch_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/brewing/batch_steps_card.dart';
+import '../../widgets/brewing/batch_hop_additions_card.dart';
 import '../../widgets/common/app_text_field.dart';
 
 /// Batch detail and tracking page
@@ -24,6 +26,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
   Batch? _batch;
   List<BatchMeasurement> _measurements = [];
   List<BatchStep> _steps = [];
+  List<BatchHopAddition> _hopAdditions = [];
   bool _isLoading = true;
 
   @override
@@ -38,11 +41,13 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
       final batch = await _service.getById(widget.batchId);
       final measurements = await _service.getMeasurements(widget.batchId);
       final steps = await _service.getSteps(widget.batchId);
+      final hopAdditions = await _service.getHopAdditions(widget.batchId);
 
       setState(() {
         _batch = batch;
         _measurements = measurements;
         _steps = steps;
+        _hopAdditions = hopAdditions;
         _isLoading = false;
       });
     } catch (e) {
@@ -124,7 +129,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
 
         const SizedBox(height: AppConstants.paddingM),
 
-        // Étapes du brassage
+        // Brewing steps
         BatchStepsCard(
           steps: _steps,
           onAddStep: _addStep,
@@ -135,7 +140,20 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
 
         const SizedBox(height: AppConstants.paddingM),
 
-        // Historique des mesures
+        // Hop additions
+        BatchHopAdditionsCard(
+          additions: _hopAdditions,
+          currentDay: _batch!.daysSinceBrew,
+          onAddHop: _addHopAddition,
+          onMarkAdded: _markHopAdded,
+          onMarkRemoved: _markHopRemoved,
+          onEdit: _editHopAddition,
+          onDelete: _deleteHopAddition,
+        ),
+
+        const SizedBox(height: AppConstants.paddingM),
+
+        // Measurement history
         if (_measurements.isNotEmpty) ...[
           _buildMeasurementsHistory(),
           const SizedBox(height: AppConstants.paddingM),
@@ -162,7 +180,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -181,7 +199,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -276,7 +294,7 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     return Container(
       padding: const EdgeInsets.all(AppConstants.paddingM),
       decoration: BoxDecoration(
-        color: AppConstants.primaryColor.withOpacity(0.05),
+        color: AppConstants.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -647,5 +665,63 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
       });
       await _service.saveSteps(widget.batchId, _steps);
     }
+  }
+
+  // ========== Hop Addition Management ==========
+
+  Future<void> _addHopAddition() async {
+    final result = await showDialog<BatchHopAddition>(
+      context: context,
+      builder: (context) => HopAdditionDialog(
+        batchId: widget.batchId,
+        hopSuggestions: const ['Cascade', 'Citra', 'Mosaic', 'Simcoe', 'Centennial', 'Amarillo', 'Galaxy', 'Nelson Sauvin', 'Saaz', 'Hallertau'],
+      ),
+    );
+
+    if (result != null) {
+      await _service.addHopAddition(result);
+      _loadData();
+    }
+  }
+
+  Future<void> _editHopAddition(BatchHopAddition addition) async {
+    final result = await showDialog<BatchHopAddition>(
+      context: context,
+      builder: (context) => HopAdditionDialog(
+        batchId: widget.batchId,
+        addition: addition,
+        hopSuggestions: const ['Cascade', 'Citra', 'Mosaic', 'Simcoe', 'Centennial', 'Amarillo', 'Galaxy', 'Nelson Sauvin', 'Saaz', 'Hallertau'],
+      ),
+    );
+
+    if (result != null) {
+      await _service.updateHopAddition(result);
+      _loadData();
+    }
+  }
+
+  Future<void> _markHopAdded(BatchHopAddition addition) async {
+    await _service.markHopAdditionAdded(addition.id);
+    _loadData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${addition.hopName} added')),
+      );
+    }
+  }
+
+  Future<void> _markHopRemoved(BatchHopAddition addition) async {
+    await _service.markHopAdditionRemoved(addition.id);
+    _loadData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${addition.hopName} removed from fermenter')),
+      );
+    }
+  }
+
+  Future<void> _deleteHopAddition(BatchHopAddition addition) async {
+    await _service.deleteHopAddition(addition.id);
+    _loadData();
   }
 }

@@ -11,8 +11,10 @@ import 'tables/fermenter_table.dart';
 import 'tables/batch_table.dart';
 import 'tables/batch_measurement_table.dart';
 import 'tables/batch_step_table.dart';
+import 'tables/batch_hop_addition_table.dart';
+import 'tables/device_table.dart';
 
-/// Singleton pour gérer la base de données SQLite
+/// Singleton for SQLite database management
 /// 
 /// Utilisation:
 /// ```dart
@@ -20,7 +22,7 @@ import 'tables/batch_step_table.dart';
 /// ```
 class DBHelper {
   static const String _databaseName = 'brewmaster.db';
-  static const int _databaseVersion = 2;
+  static const int _databaseVersion = 4;
 
   // Singleton pattern
   DBHelper._privateConstructor();
@@ -73,6 +75,11 @@ class DBHelper {
     await db.execute(BatchTable.createTable);
     await db.execute(BatchMeasurementTable.createTable);
     await db.execute(BatchStepTable.createTable);
+    await db.execute(BatchHopAdditionTable.createTable);
+
+    // BrewCreator device tables
+    await db.execute(DeviceTable.createTable);
+    await db.execute(DeviceReadingTable.createTable);
 
     // Création des index pour optimiser les requêtes
     await _createIndexes(db);
@@ -81,13 +88,39 @@ class DBHelper {
     await _insertSampleData(db);
   }
 
-  /// Gère les migrations de version
+  /// Handles version migrations
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Migration v1 -> v2: Ajout de la table des étapes de brassins
+    // Migration v1 -> v2: Add batch steps table
     if (oldVersion < 2) {
       await db.execute(BatchStepTable.createTable);
       await db.execute(
         'CREATE INDEX idx_batch_steps_batch ON ${BatchStepTable.tableName}(batch_id)'
+      );
+    }
+
+    // Migration v2 -> v3: Add batch hop additions table
+    if (oldVersion < 3) {
+      await db.execute(BatchHopAdditionTable.createTable);
+      await db.execute(
+        'CREATE INDEX idx_batch_hop_additions_batch ON ${BatchHopAdditionTable.tableName}(batch_id)'
+      );
+    }
+
+    // Migration v3 -> v4: Add BrewCreator device tables
+    if (oldVersion < 4) {
+      await db.execute(DeviceTable.createTable);
+      await db.execute(DeviceReadingTable.createTable);
+      await db.execute(
+        'CREATE INDEX idx_devices_fermenter ON ${DeviceTable.tableName}(fermenter_id)'
+      );
+      await db.execute(
+        'CREATE INDEX idx_device_readings_device ON ${DeviceReadingTable.tableName}(device_id)'
+      );
+      await db.execute(
+        'CREATE INDEX idx_device_readings_batch ON ${DeviceReadingTable.tableName}(batch_id)'
+      );
+      await db.execute(
+        'CREATE INDEX idx_device_readings_time ON ${DeviceReadingTable.tableName}(reading_time)'
       );
     }
   }
@@ -120,6 +153,25 @@ class DBHelper {
     // Index sur les étapes de brassins
     await db.execute(
       'CREATE INDEX idx_batch_steps_batch ON ${BatchStepTable.tableName}(batch_id)'
+    );
+
+    // Index on batch hop additions
+    await db.execute(
+      'CREATE INDEX idx_batch_hop_additions_batch ON ${BatchHopAdditionTable.tableName}(batch_id)'
+    );
+
+    // Indexes on device tables
+    await db.execute(
+      'CREATE INDEX idx_devices_fermenter ON ${DeviceTable.tableName}(fermenter_id)'
+    );
+    await db.execute(
+      'CREATE INDEX idx_device_readings_device ON ${DeviceReadingTable.tableName}(device_id)'
+    );
+    await db.execute(
+      'CREATE INDEX idx_device_readings_batch ON ${DeviceReadingTable.tableName}(batch_id)'
+    );
+    await db.execute(
+      'CREATE INDEX idx_device_readings_time ON ${DeviceReadingTable.tableName}(reading_time)'
     );
   }
 
