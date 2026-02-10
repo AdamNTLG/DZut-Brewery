@@ -419,16 +419,14 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
 
     if (confirm == true) {
       await _service.updateStatus(widget.batchId, BatchStatus.brewing);
-      // Add default mashing step to start
-      final mashingStep = BatchStep(
-        batchId: widget.batchId,
-        type: StepType.mashing,
-        actualStart: DateTime.now(),
-      );
-      setState(() {
-        _steps = [mashingStep, ..._steps];
-      });
-      await _service.saveSteps(widget.batchId, _steps);
+      // Démarrer automatiquement le premier step s'il existe
+      if (_steps.isNotEmpty) {
+        final firstStep = _steps.first.copyWith(actualStart: DateTime.now());
+        setState(() {
+          _steps = [firstStep, ..._steps.skip(1)];
+        });
+        await _service.saveSteps(widget.batchId, _steps);
+      }
       _loadData();
     }
   }
@@ -635,9 +633,20 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
   }
 
   Future<void> _startStep(BatchStep step) async {
-    final updatedStep = step.copyWith(actualStart: DateTime.now());
+    final now = DateTime.now();
+
+    // Terminer automatiquement le step précédent en cours et démarrer celui-ci
+    final updatedSteps = _steps.map((s) {
+      if (s.id == step.id) {
+        return s.copyWith(actualStart: now);
+      } else if (s.status == StepStatus.inProgress) {
+        return s.copyWith(actualEnd: now);
+      }
+      return s;
+    }).toList();
+
     setState(() {
-      _steps = _steps.map((s) => s.id == step.id ? updatedStep : s).toList();
+      _steps = updatedSteps;
     });
     await _service.saveSteps(widget.batchId, _steps);
   }

@@ -361,7 +361,7 @@ class _BatchFormPageState extends State<BatchFormPage> {
             : null,
       );
 
-      await _batchService.create(batch);
+      await _batchService.createWithSteps(batch);
 
       if (mounted) {
         Navigator.of(context).pop(true);

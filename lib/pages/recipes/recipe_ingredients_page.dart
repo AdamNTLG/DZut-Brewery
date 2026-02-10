@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide MaterialType;
 import '../../constants/app_constants.dart';
+import '../../constants/beer_styles.dart';
 import '../../models/raw_material.dart';
 import '../../models/recipe_grain.dart';
 import '../../models/recipe_hop.dart';
@@ -8,6 +9,7 @@ import '../../models/recipe_addition.dart';
 import '../../models/mash_step.dart';
 import '../../services/recipe_service.dart';
 import '../../services/raw_material_service.dart';
+import '../../services/calculation_service.dart';
 import '../../widgets/common/app_text_field.dart';
 
 /// Page pour éditer les ingrédients d'une recette
@@ -24,11 +26,19 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
     with SingleTickerProviderStateMixin {
   final _recipeService = RecipeService();
   final _materialService = RawMaterialService();
-  
+
   late TabController _tabController;
   RecipeComplete? _recipe;
   List<RawMaterial> _materials = [];
   bool _isLoading = true;
+
+  // Valeurs calculées automatiquement
+  double? _calculatedOg;
+  double? _calculatedFg;
+  double? _calculatedIbu;
+  double? _calculatedEbc;
+  double? _calculatedAbv;
+  BeerStyle? _beerStyle;
 
   @override
   void initState() {
@@ -53,6 +63,17 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
         _materials = materials;
         _isLoading = false;
       });
+      _recalculate();
+      // Persister les valeurs calculées dans la recette
+      if (_recipe != null) {
+        await _recipeService.update(_recipe!.recipe.copyWith(
+          targetOg: _calculatedOg,
+          targetFg: _calculatedFg,
+          targetIbu: _calculatedIbu,
+          targetEbc: _calculatedEbc,
+          targetAbv: _calculatedAbv,
+        ));
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
@@ -61,6 +82,49 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
         );
       }
     }
+  }
+
+  void _recalculate() {
+    if (_recipe == null) return;
+    final r = _recipe!;
+
+    final og = CalculationService.calculateOG(
+      grains: r.grains,
+      volumeLiters: r.recipe.volumeLiters,
+      efficiency: r.recipe.efficiency,
+    );
+
+    final attenuation = r.yeasts.isNotEmpty
+        ? (r.yeasts.first.materialAttenuation ?? 75.0)
+        : 75.0;
+    final fg = CalculationService.estimateFG(og, attenuation);
+
+    final ibu = CalculationService.calculateIBU(
+      hops: r.hops,
+      volumeLiters: r.recipe.volumeLiters,
+      og: og,
+    );
+
+    final ebc = CalculationService.calculateEBC(
+      grains: r.grains,
+      volumeLiters: r.recipe.volumeLiters,
+    );
+
+    final abv = CalculationService.calculateAbv(og, fg);
+
+    BeerStyle? style;
+    if (r.recipe.beerStyle != null) {
+      style = BeerStyles.findByName(r.recipe.beerStyle!);
+    }
+
+    setState(() {
+      _calculatedOg = og;
+      _calculatedFg = fg;
+      _calculatedIbu = ibu;
+      _calculatedEbc = ebc;
+      _calculatedAbv = abv;
+      _beerStyle = style;
+    });
   }
 
   List<RawMaterial> _getMaterialsByType(MaterialType type) {
@@ -88,16 +152,88 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
           ? const Center(child: CircularProgressIndicator())
           : _recipe == null
               ? const Center(child: Text('Recette non trouvée'))
-              : TabBarView(
-                  controller: _tabController,
+              : Column(
                   children: [
-                    _buildMashStepsTab(),
-                    _buildGrainsTab(),
-                    _buildHopsTab(),
-                    _buildYeastsTab(),
-                    _buildAdditionsTab(),
+                    _buildCalculatedStatsBar(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildMashStepsTab(),
+                          _buildGrainsTab(),
+                          _buildHopsTab(),
+                          _buildYeastsTab(),
+                          _buildAdditionsTab(),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
+    );
+  }
+
+  Widget _buildCalculatedStatsBar() {
+    final hasValues = _calculatedOg != null && _calculatedOg! > 1.0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.paddingM,
+        vertical: AppConstants.paddingS,
+      ),
+      decoration: BoxDecoration(
+        color: AppConstants.secondaryColor.withValues(alpha: 0.05),
+        border: Border(
+          bottom: BorderSide(color: Colors.grey[300]!),
+        ),
+      ),
+      child: hasValues
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatChip('OG', _calculatedOg!.toStringAsFixed(3),
+                    _beerStyle?.isOgInRange(_calculatedOg)),
+                _buildStatChip('FG', _calculatedFg!.toStringAsFixed(3),
+                    _beerStyle?.isFgInRange(_calculatedFg)),
+                _buildStatChip('IBU', _calculatedIbu!.toStringAsFixed(0),
+                    _beerStyle?.isIbuInRange(_calculatedIbu)),
+                _buildStatChip('EBC', _calculatedEbc!.toStringAsFixed(0),
+                    _beerStyle?.isEbcInRange(_calculatedEbc)),
+                _buildStatChip('ABV', '${_calculatedAbv!.toStringAsFixed(1)}%',
+                    _beerStyle?.isAbvInRange(_calculatedAbv)),
+              ],
+            )
+          : Text(
+              'Ajoutez des ingrédients pour voir les calculs',
+              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+    );
+  }
+
+  Widget _buildStatChip(String label, String value, bool? inRange) {
+    Color valueColor;
+    if (inRange == null) {
+      valueColor = AppConstants.textColor;
+    } else {
+      valueColor = inRange ? AppConstants.successColor : AppConstants.errorColor;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: valueColor,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+        ),
+      ],
     );
   }
 
@@ -164,25 +300,6 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
     
     return Column(
       children: [
-        if (grains.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(AppConstants.paddingM),
-            color: AppConstants.grainColor.withOpacity(0.1),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.grain, color: AppConstants.grainColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Total: ${totalKg.toStringAsFixed(2)} kg',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppConstants.grainColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
         Expanded(
           child: grains.isEmpty
               ? _buildEmptyState('Aucun malt', Icons.grain)
@@ -193,7 +310,28 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                     final pct = grain.percentageOf(totalKg);
                     return _buildIngredientCard(
                       name: grain.materialName ?? 'Malt inconnu',
-                      subtitle: '${grain.quantityKg.toStringAsFixed(2)} kg (${pct.toStringAsFixed(1)}%)',
+                      subtitle: '',
+                      subtitleWidget: Row(
+                        children: [
+                          Text(
+                            '${grain.quantityKg.toStringAsFixed(2)} kg',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppConstants.grainColor,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            '${pct.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ],
+                      ),
                       color: AppConstants.grainColor,
                       onEdit: () => _editGrain(grain),
                       onDelete: () => _deleteGrain(grain),
@@ -344,6 +482,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
   Widget _buildIngredientCard({
     required String name,
     required String subtitle,
+    Widget? subtitleWidget,
     required Color color,
     String? badge,
     required VoidCallback onEdit,
@@ -365,7 +504,7 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
           child: Icon(Icons.circle, color: color, size: 20),
         ),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
-        subtitle: Text(subtitle),
+        subtitle: subtitleWidget ?? Text(subtitle),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -574,6 +713,9 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
         : null;
     final qtyController = TextEditingController(text: existing?.quantityG.toStringAsFixed(0) ?? '30');
     final timeController = TextEditingController(text: existing?.timeValue.toStringAsFixed(0) ?? '60');
+    final tempController = TextEditingController(
+      text: existing?.temperature?.toStringAsFixed(0) ?? '80',
+    );
     HopUse hopUse = existing?.hopUse ?? HopUse.boil;
 
     return showDialog<RecipeHop>(
@@ -596,7 +738,17 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                 DropdownButtonFormField<HopUse>(
                   initialValue: hopUse,
                   items: HopUse.values.map((u) => DropdownMenuItem(value: u, child: Text(u.label))).toList(),
-                  onChanged: (u) => setState(() => hopUse = u!),
+                  onChanged: (u) {
+                    setState(() {
+                      hopUse = u!;
+                      // Mettre à jour le label du temps selon le type
+                      if (u == HopUse.dryHop) {
+                        timeController.text = existing?.hopUse == HopUse.dryHop
+                            ? existing!.timeValue.toStringAsFixed(0)
+                            : '3';
+                      }
+                    });
+                  },
                   decoration: const InputDecoration(labelText: 'Utilisation'),
                 ),
                 const SizedBox(height: AppConstants.paddingM),
@@ -604,9 +756,25 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                   children: [
                     Expanded(child: AppNumberField(label: 'Quantité (g)', controller: qtyController, decimals: 0)),
                     const SizedBox(width: AppConstants.paddingM),
-                    Expanded(child: AppNumberField(label: 'Temps (${hopUse.timeUnit})', controller: timeController, decimals: 0)),
+                    Expanded(child: AppNumberField(
+                      label: hopUse == HopUse.dryHop
+                          ? 'Jours avant fin fermentation'
+                          : 'Temps (${hopUse.timeUnit})',
+                      controller: timeController,
+                      decimals: 0,
+                    )),
                   ],
                 ),
+                // Champ température pour hors flamme (whirlpool)
+                if (hopUse == HopUse.whirlpool) ...[
+                  const SizedBox(height: AppConstants.paddingM),
+                  AppNumberField(
+                    label: 'Température (°C)',
+                    controller: tempController,
+                    decimals: 0,
+                    hint: '80',
+                  ),
+                ],
               ],
             ),
           ),
@@ -621,7 +789,9 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
                   quantityG: double.tryParse(qtyController.text) ?? 30,
                   hopUse: hopUse,
                   timeValue: double.tryParse(timeController.text) ?? 60,
-                  temperature: hopUse.defaultTemperature,
+                  temperature: hopUse == HopUse.whirlpool
+                      ? (double.tryParse(tempController.text) ?? 80.0)
+                      : hopUse.defaultTemperature,
                 ));
               },
               child: const Text('Enregistrer'),

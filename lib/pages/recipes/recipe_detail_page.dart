@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../constants/beer_styles.dart';
+import '../../models/recipe_hop.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/common/beer_color_indicator.dart';
 import '../../widgets/brewing/style_gauge.dart';
 import '../../utils/formatters.dart';
 import 'recipe_form_page.dart';
 import 'recipe_ingredients_page.dart';
+import '../batches/batch_form_page.dart';
 
-/// Page affichant le détail complet d'une recette
+/// Recipe detail page
 class RecipeDetailPage extends StatefulWidget {
   final String recipeId;
 
@@ -20,7 +22,7 @@ class RecipeDetailPage extends StatefulWidget {
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
   final _service = RecipeService();
-  
+
   RecipeComplete? _recipe;
   bool _isLoading = true;
 
@@ -42,7 +44,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -52,7 +54,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_recipe?.recipe.name ?? 'Recette'),
+        title: Text(_recipe?.recipe.name ?? 'Recipe'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -77,7 +79,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 value: 'brew',
                 child: ListTile(
                   leading: Icon(Icons.play_arrow),
-                  title: Text('Démarrer un brassin'),
+                  title: Text('Start a Batch'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -85,7 +87,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 value: 'duplicate',
                 child: ListTile(
                   leading: Icon(Icons.copy),
-                  title: Text('Dupliquer'),
+                  title: Text('Duplicate'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -93,7 +95,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 value: 'delete',
                 child: ListTile(
                   leading: Icon(Icons.delete, color: Colors.red),
-                  title: Text('Supprimer', style: TextStyle(color: Colors.red)),
+                  title: Text('Delete', style: TextStyle(color: Colors.red)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -104,7 +106,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _recipe == null
-              ? const Center(child: Text('Recette non trouvée'))
+              ? const Center(child: Text('Recipe not found'))
               : RefreshIndicator(
                   onRefresh: _loadData,
                   child: _buildContent(),
@@ -113,7 +115,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ? FloatingActionButton.extended(
               onPressed: _editIngredients,
               icon: const Icon(Icons.edit),
-              label: const Text('Ingrédients'),
+              label: const Text('Ingredients'),
             )
           : null,
     );
@@ -122,7 +124,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   Widget _buildContent() {
     final r = _recipe!;
 
-    // Trouver le style BJCP correspondant
     BeerStyle? style;
     if (r.recipe.beerStyle != null) {
       style = BeerStyles.findByName(r.recipe.beerStyle!);
@@ -131,12 +132,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     return ListView(
       padding: const EdgeInsets.all(AppConstants.paddingM),
       children: [
-        // En-tête avec caractéristiques
         _buildHeader(r),
 
         const SizedBox(height: AppConstants.paddingM),
 
-        // Jauges de style BJCP
+        // BJCP style gauges
         if (style != null)
           StyleGaugesCard(
             style: style,
@@ -149,56 +149,56 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
         const SizedBox(height: AppConstants.paddingM),
 
-        // Paliers d'empâtage
+        // Mash steps
         if (r.mashSteps.isNotEmpty) ...[
           _buildSection(
-            title: 'Empâtage',
+            title: 'Mashing',
             icon: Icons.thermostat,
             child: _buildMashSteps(r),
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
+
         // Grains
         if (r.grains.isNotEmpty) ...[
           _buildSection(
-            title: 'Malts & Céréales (${Formatters.formatWeightKg(r.totalGrainsKg)})',
+            title: 'Malts & Grains (${Formatters.formatWeightKg(r.totalGrainsKg)})',
             icon: Icons.grain,
             child: _buildGrainsList(r),
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
-        // Houblons
+
+        // Hops
         if (r.hops.isNotEmpty) ...[
           _buildSection(
-            title: 'Houblons (${Formatters.formatWeightG(r.totalHopsG)})',
+            title: 'Hops (${Formatters.formatWeightG(r.totalHopsG)})',
             icon: Icons.eco,
             child: _buildHopsList(r),
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
-        // Levures
+
+        // Yeasts
         if (r.yeasts.isNotEmpty) ...[
           _buildSection(
-            title: 'Levures',
+            title: 'Yeasts',
             icon: Icons.bubble_chart,
             child: _buildYeastsList(r),
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
-        // Ajouts divers
+
+        // Other additions
         if (r.additions.isNotEmpty) ...[
           _buildSection(
-            title: 'Ajouts divers',
+            title: 'Other Additions',
             icon: Icons.add_circle_outline,
             child: _buildAdditionsList(r),
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
+
         // Notes
         if (r.recipe.notes != null && r.recipe.notes!.isNotEmpty) ...[
           _buildSection(
@@ -211,8 +211,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ),
           const SizedBox(height: AppConstants.paddingM),
         ],
-        
-        // Espace pour le FAB
+
+        // Space for FAB
         const SizedBox(height: 80),
       ],
     );
@@ -248,7 +248,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                         ),
                       ),
                       Text(
-                        '${r.recipe.boilTime} min ébullition',
+                        '${r.recipe.boilTime} min boil',
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ],
@@ -259,12 +259,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             const SizedBox(height: AppConstants.paddingM),
             const Divider(),
             const SizedBox(height: AppConstants.paddingS),
-            // Specs en grille
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSpecItem('DI', Formatters.formatGravity(r.recipe.targetOg)),
-                _buildSpecItem('DF', Formatters.formatGravity(r.recipe.targetFg)),
+                _buildSpecItem('OG', Formatters.formatGravity(r.recipe.targetOg)),
+                _buildSpecItem('FG', Formatters.formatGravity(r.recipe.targetFg)),
                 _buildSpecItem('ABV', Formatters.formatAbv(r.recipe.targetAbv)),
                 _buildSpecItem('IBU', r.recipe.targetIbu?.toStringAsFixed(0) ?? '-'),
                 _buildSpecItem('EBC', r.recipe.targetEbc?.toStringAsFixed(0) ?? '-'),
@@ -340,8 +339,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               style: const TextStyle(color: AppConstants.primaryColor),
             ),
           ),
-          title: Text(step.description ?? 'Palier ${step.stepOrder}'),
-          subtitle: Text('${step.temperature.toStringAsFixed(0)}°C pendant ${step.durationMin} min'),
+          title: Text(step.description ?? 'Step ${step.stepOrder}'),
+          subtitle: Text('${step.temperature.toStringAsFixed(0)}°C for ${step.durationMin} min'),
         );
       }).toList(),
     );
@@ -352,23 +351,30 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       children: r.grains.map((grain) {
         final percentage = grain.percentageOf(r.totalGrainsKg);
         return ListTile(
-          title: Text(grain.materialName ?? 'Malt inconnu'),
-          subtitle: LinearProgressIndicator(
-            value: percentage / 100,
-            backgroundColor: Colors.grey[200],
-            valueColor: const AlwaysStoppedAnimation(AppConstants.grainColor),
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
+          title: Row(
             children: [
-              Text(
-                '${grain.quantityKg.toStringAsFixed(2)} kg',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  grain.materialName ?? 'Unknown malt',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ),
               Text(
+                '${grain.quantityKg.toStringAsFixed(2)} kg',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppConstants.grainColor,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
                 '${percentage.toStringAsFixed(1)}%',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
               ),
             ],
           ),
@@ -378,8 +384,16 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Widget _buildHopsList(RecipeComplete r) {
+    // Sort: Boil first, then Whirlpool, then Dry Hop
+    final sortedHops = List.of(r.hops)..sort((a, b) {
+      const order = {HopUse.boil: 0, HopUse.whirlpool: 1, HopUse.dryHop: 2};
+      final cmp = order[a.hopUse]!.compareTo(order[b.hopUse]!);
+      if (cmp != 0) return cmp;
+      return b.timeValue.compareTo(a.timeValue);
+    });
+
     return Column(
-      children: r.hops.map((hop) {
+      children: sortedHops.map((hop) {
         return ListTile(
           leading: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -391,12 +405,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               hop.hopUse.label,
               style: const TextStyle(
                 fontSize: 10,
-                color: AppConstants.hopColor,
+                color: AppConstants.primaryDark,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          title: Text(hop.materialName ?? 'Houblon inconnu'),
+          title: Text(hop.materialName ?? 'Unknown hop'),
           subtitle: Text(
             '${hop.timeValue.toStringAsFixed(0)} ${hop.hopUse.timeUnit}${hop.materialAlphaAcid != null ? ' • ${hop.materialAlphaAcid}% AA' : ''}',
           ),
@@ -414,7 +428,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       children: r.yeasts.map((yeast) {
         return ListTile(
           leading: const Icon(Icons.bubble_chart, color: AppConstants.yeastColor),
-          title: Text(yeast.materialName ?? 'Levure inconnue'),
+          title: Text(yeast.materialName ?? 'Unknown yeast'),
           subtitle: Text(
             '${yeast.form.label}${yeast.materialAttenuation != null ? ' • ${yeast.materialAttenuation}% att.' : ''}',
           ),
@@ -442,7 +456,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               style: const TextStyle(fontSize: 10),
             ),
           ),
-          title: Text(addition.materialName ?? 'Ingrédient inconnu'),
+          title: Text(addition.materialName ?? 'Unknown ingredient'),
           trailing: Text(
             '${addition.quantity.toStringAsFixed(1)} ${addition.unit}',
             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -458,35 +472,39 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         builder: (_) => RecipeFormPage(recipe: _recipe?.recipe),
       ),
     );
-    
+
     if (result == true) {
       _loadData();
     }
   }
 
   void _editIngredients() async {
-    final result = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => RecipeIngredientsPage(recipeId: widget.recipeId),
       ),
     );
-    
-    if (result == true) {
-      _loadData();
+    // Always reload since ingredients may have changed
+    _loadData();
+  }
+
+  void _startBrew() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => BatchFormPage(recipeId: widget.recipeId),
+      ),
+    );
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Batch created successfully')),
+      );
     }
   }
 
-  void _startBrew() {
-    // TODO: Implémenter création de brassin
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fonctionnalité à venir')),
-    );
-  }
-
   void _duplicateRecipe() async {
-    // TODO: Implémenter duplication
+    // TODO: Implement duplication
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fonctionnalité à venir')),
+      const SnackBar(content: Text('Coming soon')),
     );
   }
 
@@ -494,12 +512,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Voulez-vous supprimer cette recette et tous ses ingrédients ?'),
+        title: const Text('Delete'),
+        content: const Text('Delete this recipe and all its ingredients?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
@@ -510,7 +528,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: const Text('Delete'),
           ),
         ],
       ),

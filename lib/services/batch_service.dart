@@ -8,7 +8,9 @@ import '../models/batch.dart';
 import '../models/batch_measurement.dart';
 import '../models/batch_step.dart';
 import '../models/batch_hop_addition.dart';
+import '../models/recipe_hop.dart';
 import 'fermenter_service.dart';
+import 'recipe_service.dart';
 
 /// Service pour gérer les brassins (CRUD)
 class BatchService {
@@ -391,6 +393,177 @@ class BatchService {
       where: '${BatchHopAdditionTable.colId} = ?',
       whereArgs: [additionId],
     );
+  }
+
+  // --- Génération automatique depuis la recette ---
+
+  /// Crée un brassin avec génération automatique des étapes et houblons
+  Future<Batch> createWithSteps(Batch batch) async {
+    final createdBatch = await create(batch);
+    await generateStepsFromRecipe(createdBatch.id, createdBatch.recipeId);
+    await generateHopAdditionsFromRecipe(createdBatch.id, createdBatch.recipeId);
+    return createdBatch;
+  }
+
+  /// Génère les étapes de brassage à partir du contenu de la recette
+  Future<List<BatchStep>> generateStepsFromRecipe(String batchId, String recipeId) async {
+    final recipeService = RecipeService();
+    final complete = await recipeService.getComplete(recipeId);
+    if (complete == null) return [];
+
+    final steps = <BatchStep>[];
+    final r = complete.recipe;
+
+    // 1. Empâtage (un step par palier)
+    if (complete.mashSteps.isNotEmpty) {
+      for (final mashStep in complete.mashSteps) {
+        steps.add(BatchStep(
+          batchId: batchId,
+          type: StepType.mashing,
+          customName: mashStep.description ?? 'Palier ${mashStep.stepOrder}',
+          temperature: mashStep.temperature,
+          notes: '${mashStep.temperature.toStringAsFixed(0)}°C pendant ${mashStep.durationMin} min',
+        ));
+      }
+    } else {
+      steps.add(BatchStep(
+        batchId: batchId,
+        type: StepType.mashing,
+        customName: 'Empâtage',
+        temperature: 66,
+        notes: 'Pas de paliers définis dans la recette',
+      ));
+    }
+
+    // 2. Rinçage
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.sparging,
+      customName: 'Rinçage',
+      temperature: 78,
+    ));
+
+    // 3. Ébullition avec rappels houblons
+    final boilHops = complete.hops.where((h) => h.hopUse == HopUse.boil).toList();
+    boilHops.sort((a, b) => b.timeValue.compareTo(a.timeValue));
+    String boilNotes = 'Ébullition ${r.boilTime} min';
+    if (boilHops.isNotEmpty) {
+      boilNotes += '\n';
+      for (final hop in boilHops) {
+        boilNotes += '- ${hop.materialName ?? "Houblon"} ${hop.quantityG.toStringAsFixed(0)}g à ${hop.timeValue.toStringAsFixed(0)} min\n';
+      }
+    }
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.boiling,
+      customName: 'Ébullition (${r.boilTime} min)',
+      temperature: 100,
+      notes: boilNotes.trim(),
+    ));
+
+    // 4. Hors flamme (si houblons whirlpool)
+    final whirlpoolHops = complete.hops.where((h) => h.hopUse == HopUse.whirlpool).toList();
+    if (whirlpoolHops.isNotEmpty) {
+      String whirlpoolNotes = '';
+      for (final hop in whirlpoolHops) {
+        whirlpoolNotes += '${hop.materialName ?? "Houblon"} ${hop.quantityG.toStringAsFixed(0)}g @ ${hop.effectiveTemperature.toStringAsFixed(0)}°C ${hop.timeValue.toStringAsFixed(0)} min\n';
+      }
+      steps.add(BatchStep(
+        batchId: batchId,
+        type: StepType.boiling,
+        customName: 'Hors flamme',
+        temperature: whirlpoolHops.first.effectiveTemperature,
+        notes: whirlpoolNotes.trim(),
+      ));
+    }
+
+    // 5. Refroidissement
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.cooling,
+      customName: 'Refroidissement',
+      notes: 'Refroidir jusqu\'à température d\'ensemencement',
+    ));
+
+    // 6. Ensemencement
+    String yeastNotes = '';
+    for (final yeast in complete.yeasts) {
+      yeastNotes += '${yeast.materialName ?? "Levure"} - ${yeast.quantity.toStringAsFixed(0)} ${yeast.unit}\n';
+    }
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.pitching,
+      customName: 'Ensemencement',
+      notes: yeastNotes.trim().isNotEmpty ? yeastNotes.trim() : null,
+    ));
+
+    // 7. Fermentation
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.fermentation,
+      customName: 'Fermentation',
+    ));
+
+    // 8. Dry Hopping (si houblons dry hop)
+    final dryHops = complete.hops.where((h) => h.hopUse == HopUse.dryHop).toList();
+    if (dryHops.isNotEmpty) {
+      String dryHopNotes = '';
+      for (final hop in dryHops) {
+        dryHopNotes += '${hop.materialName ?? "Houblon"} ${hop.quantityG.toStringAsFixed(0)}g - ${hop.timeValue.toStringAsFixed(0)} jours avant fin\n';
+      }
+      steps.add(BatchStep(
+        batchId: batchId,
+        type: StepType.dryHopping,
+        customName: 'Dry Hopping',
+        notes: dryHopNotes.trim(),
+      ));
+    }
+
+    // 9. Conditionnement
+    steps.add(BatchStep(
+      batchId: batchId,
+      type: StepType.conditioning,
+      customName: 'Conditionnement',
+    ));
+
+    await saveSteps(batchId, steps);
+    return steps;
+  }
+
+  /// Génère les ajouts de houblon du brassin depuis la recette
+  Future<void> generateHopAdditionsFromRecipe(String batchId, String recipeId) async {
+    final recipeService = RecipeService();
+    final complete = await recipeService.getComplete(recipeId);
+    if (complete == null) return;
+
+    for (final hop in complete.hops) {
+      HopAdditionType type;
+      int? boilMinutes;
+      int? dryHopStartDay;
+
+      switch (hop.hopUse) {
+        case HopUse.boil:
+          type = hop.timeValue >= 30 ? HopAdditionType.bittering : HopAdditionType.flavor;
+          boilMinutes = hop.timeValue.toInt();
+          break;
+        case HopUse.whirlpool:
+          type = HopAdditionType.aroma;
+          break;
+        case HopUse.dryHop:
+          type = HopAdditionType.dryHop;
+          dryHopStartDay = hop.timeValue.toInt();
+          break;
+      }
+
+      await addHopAddition(BatchHopAddition(
+        batchId: batchId,
+        hopName: hop.materialName ?? 'Houblon',
+        amountGrams: hop.quantityG,
+        type: type,
+        boilMinutes: boilMinutes,
+        dryHopStartDay: dryHopStartDay,
+      ));
+    }
   }
 
   /// Gets hop additions that need attention based on current batch day

@@ -86,10 +86,24 @@ class BatchStepsCard extends StatelessWidget {
               itemBuilder: (context, index) {
                 final step = steps[index];
                 final isLast = index == steps.length - 1;
+
+                // Déterminer si c'est le prochain step à démarrer
+                bool isNextStep = false;
+                if (step.status == StepStatus.pending) {
+                  if (index == 0) {
+                    isNextStep = true;
+                  } else {
+                    final previousStep = steps[index - 1];
+                    isNextStep = previousStep.status == StepStatus.inProgress ||
+                        previousStep.status == StepStatus.completed;
+                  }
+                }
+
                 return _BatchStepTile(
                   step: step,
                   isLast: isLast,
-                  onStart: onStartStep != null ? () => onStartStep!(step) : null,
+                  isNextStep: isNextStep,
+                  onStart: isNextStep && onStartStep != null ? () => onStartStep!(step) : null,
                   onEnd: onEndStep != null ? () => onEndStep!(step) : null,
                   onEdit: onEditStep != null ? () => onEditStep!(step) : null,
                 );
@@ -104,6 +118,7 @@ class BatchStepsCard extends StatelessWidget {
 class _BatchStepTile extends StatelessWidget {
   final BatchStep step;
   final bool isLast;
+  final bool isNextStep;
   final VoidCallback? onStart;
   final VoidCallback? onEnd;
   final VoidCallback? onEdit;
@@ -111,6 +126,7 @@ class _BatchStepTile extends StatelessWidget {
   const _BatchStepTile({
     required this.step,
     required this.isLast,
+    this.isNextStep = false,
     this.onStart,
     this.onEnd,
     this.onEdit,
@@ -278,16 +294,16 @@ class _BatchStepTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 8),
                         child: Row(
                           children: [
-                            if (status == StepStatus.pending && onStart != null)
+                            if (status == StepStatus.pending && isNextStep && onStart != null)
                               _buildActionButton(
-                                'Start',
+                                'Commencer',
                                 Icons.play_arrow,
                                 color,
                                 onStart!,
                               ),
                             if (status == StepStatus.inProgress && onEnd != null)
                               _buildActionButton(
-                                'Finish',
+                                'Terminer',
                                 Icons.stop,
                                 AppConstants.successColor,
                                 onEnd!,

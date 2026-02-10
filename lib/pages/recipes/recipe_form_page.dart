@@ -23,11 +23,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   late TextEditingController _volumeController;
   late TextEditingController _initialWaterController;
   late TextEditingController _finalWaterController;
-  late TextEditingController _targetOgController;
-  late TextEditingController _targetFgController;
-  late TextEditingController _targetIbuController;
-  late TextEditingController _targetEbcController;
-  late TextEditingController _targetAbvController;
   late TextEditingController _boilTimeController;
   late TextEditingController _efficiencyController;
   late TextEditingController _notesController;
@@ -52,21 +47,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     _finalWaterController = TextEditingController(
       text: r?.finalWater?.toStringAsFixed(1) ?? '',
     );
-    _targetOgController = TextEditingController(
-      text: r?.targetOg?.toStringAsFixed(3) ?? '',
-    );
-    _targetFgController = TextEditingController(
-      text: r?.targetFg?.toStringAsFixed(3) ?? '',
-    );
-    _targetIbuController = TextEditingController(
-      text: r?.targetIbu?.toStringAsFixed(0) ?? '',
-    );
-    _targetEbcController = TextEditingController(
-      text: r?.targetEbc?.toStringAsFixed(0) ?? '',
-    );
-    _targetAbvController = TextEditingController(
-      text: r?.targetAbv?.toStringAsFixed(1) ?? '',
-    );
     _boilTimeController = TextEditingController(
       text: (r?.boilTime ?? AppConstants.defaultBoilTime).toString(),
     );
@@ -84,11 +64,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     _volumeController.dispose();
     _initialWaterController.dispose();
     _finalWaterController.dispose();
-    _targetOgController.dispose();
-    _targetFgController.dispose();
-    _targetIbuController.dispose();
-    _targetEbcController.dispose();
-    _targetAbvController.dispose();
     _boilTimeController.dispose();
     _efficiencyController.dispose();
     _notesController.dispose();
@@ -179,64 +154,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
             ),
             
             const SizedBox(height: AppConstants.paddingL),
-            
-            // Section: Cibles
-            _buildSectionTitle('Caractéristiques cibles'),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: AppNumberField(
-                    label: 'DI (OG)',
-                    controller: _targetOgController,
-                    decimals: 3,
-                    hint: '1.050',
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingM),
-                Expanded(
-                  child: AppNumberField(
-                    label: 'DF (FG)',
-                    controller: _targetFgController,
-                    decimals: 3,
-                    hint: '1.010',
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: AppConstants.paddingM),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: AppNumberField(
-                    label: 'IBU',
-                    controller: _targetIbuController,
-                    decimals: 0,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingM),
-                Expanded(
-                  child: AppNumberField(
-                    label: 'EBC',
-                    controller: _targetEbcController,
-                    decimals: 0,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingM),
-                Expanded(
-                  child: AppNumberField(
-                    label: 'ABV (%)',
-                    controller: _targetAbvController,
-                    decimals: 1,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: AppConstants.paddingL),
-            
+
             // Section: Notes
             _buildSectionTitle('Notes'),
             
@@ -319,12 +237,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
           },
           onSelected: (String selection) {
             setState(() => _selectedStyle = selection);
-            
-            // Auto-remplir les caractéristiques du style
-            final style = BeerStyles.findByName(selection);
-            if (style != null) {
-              _autoFillStyleValues(style);
-            }
           },
           fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
             return TextField(
@@ -343,26 +255,6 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         ),
       ],
     );
-  }
-
-  void _autoFillStyleValues(BeerStyle style) {
-    // Ne remplir que si les champs sont vides
-    if (_targetOgController.text.isEmpty) {
-      _targetOgController.text = ((style.ogMin + style.ogMax) / 2).toStringAsFixed(3);
-    }
-    if (_targetFgController.text.isEmpty) {
-      _targetFgController.text = ((style.fgMin + style.fgMax) / 2).toStringAsFixed(3);
-    }
-    if (_targetIbuController.text.isEmpty) {
-      _targetIbuController.text = ((style.ibuMin + style.ibuMax) / 2).toStringAsFixed(0);
-    }
-    if (_targetEbcController.text.isEmpty) {
-      _targetEbcController.text = ((style.ebcMin + style.ebcMax) / 2).toStringAsFixed(0);
-    }
-    if (_targetAbvController.text.isEmpty) {
-      _targetAbvController.text = ((style.abvMin + style.abvMax) / 2).toStringAsFixed(1);
-    }
-    setState(() {});
   }
 
   double? _parseDouble(String? value) {
@@ -388,20 +280,23 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         volumeLiters: _parseDouble(_volumeController.text) ?? AppConstants.defaultVolume,
         initialWater: _parseDouble(_initialWaterController.text),
         finalWater: _parseDouble(_finalWaterController.text),
-        targetOg: _parseDouble(_targetOgController.text),
-        targetFg: _parseDouble(_targetFgController.text),
-        targetIbu: _parseDouble(_targetIbuController.text),
-        targetEbc: _parseDouble(_targetEbcController.text),
-        targetAbv: _parseDouble(_targetAbvController.text),
+        // Les valeurs cibles sont calculées automatiquement depuis les ingrédients
+        targetOg: widget.recipe?.targetOg,
+        targetFg: widget.recipe?.targetFg,
+        targetIbu: widget.recipe?.targetIbu,
+        targetEbc: widget.recipe?.targetEbc,
+        targetAbv: widget.recipe?.targetAbv,
         boilTime: _parseInt(_boilTimeController.text) ?? AppConstants.defaultBoilTime,
         efficiency: _parseDouble(_efficiencyController.text) ?? AppConstants.defaultEfficiency,
         notes: _notesController.text.trim().isNotEmpty
             ? _notesController.text.trim()
             : null,
       );
-      
+
       if (_isEditing) {
         await _service.update(recipe);
+        // Recalculer si volume ou efficacité ont changé
+        await _service.recalculateStats(recipe.id);
       } else {
         await _service.create(recipe);
       }

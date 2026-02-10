@@ -12,6 +12,7 @@ import '../models/recipe_grain.dart';
 import '../models/recipe_hop.dart';
 import '../models/recipe_yeast.dart';
 import '../models/recipe_addition.dart';
+import 'calculation_service.dart';
 
 /// Modèle complet d'une recette avec tous ses ingrédients
 class RecipeComplete {
@@ -308,6 +309,66 @@ class RecipeService {
       RecipeAdditionTable.tableName,
       where: '${RecipeAdditionTable.colId} = ?',
       whereArgs: [id],
+    );
+  }
+
+  /// Recalcule les statistiques d'une recette à partir de ses ingrédients
+  /// et persiste les valeurs calculées (OG, FG, IBU, EBC, ABV)
+  Future<RecipeComplete?> recalculateStats(String recipeId) async {
+    final complete = await getComplete(recipeId);
+    if (complete == null) return null;
+
+    final r = complete.recipe;
+    final grains = complete.grains;
+    final hops = complete.hops;
+    final yeasts = complete.yeasts;
+
+    // Calcul OG
+    final og = CalculationService.calculateOG(
+      grains: grains,
+      volumeLiters: r.volumeLiters,
+      efficiency: r.efficiency,
+    );
+
+    // Calcul FG (atténuation de la 1ère levure, défaut 75%)
+    final attenuation = yeasts.isNotEmpty
+        ? (yeasts.first.materialAttenuation ?? 75.0)
+        : 75.0;
+    final fg = CalculationService.estimateFG(og, attenuation);
+
+    // Calcul IBU
+    final ibu = CalculationService.calculateIBU(
+      hops: hops,
+      volumeLiters: r.volumeLiters,
+      og: og,
+    );
+
+    // Calcul EBC
+    final ebc = CalculationService.calculateEBC(
+      grains: grains,
+      volumeLiters: r.volumeLiters,
+    );
+
+    // Calcul ABV
+    final abv = CalculationService.calculateAbv(og, fg);
+
+    // Persister les valeurs calculées
+    final updatedRecipe = r.copyWith(
+      targetOg: og,
+      targetFg: fg,
+      targetIbu: ibu,
+      targetEbc: ebc,
+      targetAbv: abv,
+    );
+    await update(updatedRecipe);
+
+    return RecipeComplete(
+      recipe: updatedRecipe,
+      mashSteps: complete.mashSteps,
+      grains: grains,
+      hops: hops,
+      yeasts: yeasts,
+      additions: complete.additions,
     );
   }
 
