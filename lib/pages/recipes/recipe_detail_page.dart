@@ -6,8 +6,7 @@ import '../../services/recipe_service.dart';
 import '../../widgets/common/beer_color_indicator.dart';
 import '../../widgets/brewing/style_gauge.dart';
 import '../../utils/formatters.dart';
-import 'recipe_form_page.dart';
-import 'recipe_ingredients_page.dart';
+import 'recipe_editor_page.dart';
 import '../batches/batch_form_page.dart';
 
 /// Recipe detail page
@@ -467,26 +466,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   void _editRecipe() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => RecipeFormPage(recipe: _recipe?.recipe),
-      ),
-    );
-
-    if (result == true) {
-      _loadData();
-    }
-  }
-
-  void _editIngredients() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RecipeIngredientsPage(recipeId: widget.recipeId),
+        builder: (_) => RecipeEditorPage(recipeId: widget.recipeId),
       ),
     );
-    // Always reload since ingredients may have changed
     _loadData();
   }
+
+  void _editIngredients() => _editRecipe();
 
   void _startBrew() async {
     final result = await Navigator.of(context).push<bool>(

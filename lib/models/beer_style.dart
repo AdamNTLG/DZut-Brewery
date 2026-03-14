@@ -1,9 +1,9 @@
-/// Modèle représentant un style de bière BJCP
+/// Modèle représentant un style de bière (BJCP ou BA)
 class BeerStyle {
   final String id;
   final String category;
   final String name;
-  final String? description;
+  final String? description;       // Description EN
   final double ogMin;
   final double ogMax;
   final double fgMin;
@@ -14,6 +14,16 @@ class BeerStyle {
   final double srmMax;
   final double abvMin;
   final double abvMax;
+
+  // Champs descriptifs (BA 2026 / optionnels)
+  final String? fermentationType;         // Ale / Lager / Hybrid
+  final String? descriptionFr;            // Description FR
+  final String? colorDescription;         // Ex: "Gold to copper"
+  final String? clarity;                  // Ex: "Chill haze allowable"
+  final String? body;                     // Ex: "Low to medium"
+  final String? maltNotes;               // Malt aroma & flavor
+  final String? hopNotes;                // Hop aroma & flavor
+  final String? fermentationCharacter;   // Fermentation characteristics
 
   const BeerStyle({
     required this.id,
@@ -30,11 +40,22 @@ class BeerStyle {
     required this.srmMax,
     required this.abvMin,
     required this.abvMax,
+    this.fermentationType,
+    this.descriptionFr,
+    this.colorDescription,
+    this.clarity,
+    this.body,
+    this.maltNotes,
+    this.hopNotes,
+    this.fermentationCharacter,
   });
 
   /// Convertit SRM en EBC (EBC ≈ SRM × 1.97)
   double get ebcMin => srmMin * 1.97;
   double get ebcMax => srmMax * 1.97;
+
+  /// True si les plages quantitatives sont définies
+  bool get hasQuantitativeRanges => ogMin > 0 || ibuMin > 0 || abvMin > 0;
 
   /// Vérifie si une valeur est dans la plage du style
   bool isOgInRange(double? og) => og != null && og >= ogMin && og <= ogMax;
@@ -43,21 +64,18 @@ class BeerStyle {
   bool isEbcInRange(double? ebc) => ebc != null && ebc >= ebcMin && ebc <= ebcMax;
   bool isAbvInRange(double? abv) => abv != null && abv >= abvMin && abv <= abvMax;
 
-  /// Calcule le pourcentage de position dans la plage (0-100)
-  /// Retourne -1 si en dessous, 101 si au dessus
-  double getPositionInRange(double? value, double min, double max) {
-    if (value == null) return 50; // Centré par défaut
-    if (value < min) return -1;
-    if (value > max) return 101;
-    if (max == min) return 50;
-    return ((value - min) / (max - min)) * 100;
+  /// Calcule le pourcentage de position dans la plage (0.0 à 1.0)
+  /// Retourne null si hors plage ou plage non définie
+  double? getPositionFraction(double? value, double min, double max) {
+    if (value == null || max <= min) return null;
+    return ((value - min) / (max - min)).clamp(0.0, 1.0);
   }
 
-  double ogPosition(double? og) => getPositionInRange(og, ogMin, ogMax);
-  double fgPosition(double? fg) => getPositionInRange(fg, fgMin, fgMax);
-  double ibuPosition(double? ibu) => getPositionInRange(ibu, ibuMin, ibuMax);
-  double ebcPosition(double? ebc) => getPositionInRange(ebc, ebcMin, ebcMax);
-  double abvPosition(double? abv) => getPositionInRange(abv, abvMin, abvMax);
+  double? ogPositionFraction(double? og) => getPositionFraction(og, ogMin, ogMax);
+  double? fgPositionFraction(double? fg) => getPositionFraction(fg, fgMin, fgMax);
+  double? ibuPositionFraction(double? ibu) => getPositionFraction(ibu, ibuMin, ibuMax);
+  double? ebcPositionFraction(double? ebc) => getPositionFraction(ebc, ebcMin, ebcMax);
+  double? abvPositionFraction(double? abv) => getPositionFraction(abv, abvMin, abvMax);
 
   /// Nom complet avec catégorie
   String get fullName => '$id. $name';

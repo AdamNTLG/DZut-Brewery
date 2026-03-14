@@ -3,6 +3,7 @@ import '../../constants/app_constants.dart';
 import '../../constants/beer_styles.dart';
 import '../../models/recipe.dart';
 import '../../services/recipe_service.dart';
+import '../../widgets/brewing/style_gauge.dart';
 import '../../widgets/common/app_text_field.dart';
 
 /// Page de formulaire pour créer/modifier une recette
@@ -18,7 +19,7 @@ class RecipeFormPage extends StatefulWidget {
 class _RecipeFormPageState extends State<RecipeFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _service = RecipeService();
-  
+
   late TextEditingController _nameController;
   late TextEditingController _volumeController;
   late TextEditingController _initialWaterController;
@@ -26,9 +27,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   late TextEditingController _boilTimeController;
   late TextEditingController _efficiencyController;
   late TextEditingController _notesController;
-  
+
   String? _selectedStyle;
+  BeerStyle? _selectedBeerStyle;
   bool _isSaving = false;
+  bool _styleGuideExpanded = true;
 
   bool get _isEditing => widget.recipe != null;
 
@@ -36,7 +39,7 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
   void initState() {
     super.initState();
     final r = widget.recipe;
-    
+
     _nameController = TextEditingController(text: r?.name ?? '');
     _volumeController = TextEditingController(
       text: (r?.volumeLiters ?? AppConstants.defaultVolume).toStringAsFixed(0),
@@ -54,8 +57,11 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       text: (r?.efficiency ?? AppConstants.defaultEfficiency).toStringAsFixed(0),
     );
     _notesController = TextEditingController(text: r?.notes ?? '');
-    
+
     _selectedStyle = r?.beerStyle;
+    if (_selectedStyle != null) {
+      _selectedBeerStyle = BeerStyles.findByName(_selectedStyle!);
+    }
   }
 
   @override
@@ -81,9 +87,27 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(AppConstants.paddingM),
           children: [
+            // Section: Style de bière (en premier — guide le brasseur)
+            _buildSectionTitle('Style de bière'),
+            _buildStyleSelector(),
+
+            // Fiche guide du style (visible si style sélectionné)
+            if (_selectedBeerStyle != null) ...[
+              const SizedBox(height: AppConstants.paddingM),
+              StyleGuideCard(
+                style: _selectedBeerStyle!,
+                isExpanded: _styleGuideExpanded,
+                onToggle: () => setState(
+                  () => _styleGuideExpanded = !_styleGuideExpanded,
+                ),
+              ),
+            ],
+
+            const SizedBox(height: AppConstants.paddingL),
+
             // Section: Informations générales
             _buildSectionTitle('Informations générales'),
-            
+
             AppTextField(
               label: 'Nom de la bière *',
               controller: _nameController,
@@ -94,17 +118,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                 return null;
               },
             ),
-            
-            const SizedBox(height: AppConstants.paddingM),
-            
-            // Style de bière avec autocomplete
-            _buildStyleSelector(),
-            
+
             const SizedBox(height: AppConstants.paddingL),
-            
+
             // Section: Volumes
-            _buildSectionTitle('Volumes'),
-            
+            _buildSectionTitle('Volumes & paramètres'),
+
             Row(
               children: [
                 Expanded(
@@ -128,9 +147,9 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: AppConstants.paddingM),
-            
+
             Row(
               children: [
                 Expanded(
@@ -152,21 +171,21 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: AppConstants.paddingL),
 
             // Section: Notes
             _buildSectionTitle('Notes'),
-            
+
             AppTextField(
               label: 'Notes de brassage',
               controller: _notesController,
               maxLines: 4,
               hint: 'Instructions, remarques, historique...',
             ),
-            
+
             const SizedBox(height: AppConstants.paddingXL),
-            
+
             // Bouton de sauvegarde
             SizedBox(
               height: 50,
@@ -181,12 +200,12 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
                     : Text(_isEditing ? 'Mettre à jour' : 'Créer la recette'),
               ),
             ),
-            
+
             const SizedBox(height: AppConstants.paddingM),
-            
+
             if (!_isEditing)
               Text(
-                "Vous pourrez ajouter les ingrédients après avoir créé la recette.",
+                'Vous pourrez ajouter les ingrédients après avoir créé la recette.',
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 12,
@@ -205,9 +224,9 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: AppConstants.primaryColor,
-        ),
+              fontWeight: FontWeight.bold,
+              color: AppConstants.primaryColor,
+            ),
       ),
     );
   }
@@ -216,44 +235,151 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Style de bière',
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
-            fontSize: 14,
+        // Bouton de sélection du style
+        InkWell(
+          onTap: _openStylePicker,
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingM,
+              vertical: AppConstants.paddingM,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.circular(AppConstants.borderRadiusSmall),
+              border: Border.all(
+                color: _selectedBeerStyle != null
+                    ? AppConstants.primaryColor.withValues(alpha: 0.5)
+                    : Colors.grey.shade300,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.local_bar,
+                  color: _selectedBeerStyle != null
+                      ? AppConstants.primaryColor
+                      : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _selectedBeerStyle != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedBeerStyle!.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              '${_selectedBeerStyle!.fermentationType ?? ''} · ${_selectedBeerStyle!.category}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        )
+                      : Text(
+                          'Choisir un style de bière...',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Colors.grey[500],
+                ),
+                if (_selectedBeerStyle != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    color: Colors.grey[500],
+                    onPressed: () {
+                      setState(() {
+                        _selectedStyle = null;
+                        _selectedBeerStyle = null;
+                      });
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: AppConstants.paddingXS),
-        Autocomplete<String>(
-          initialValue: TextEditingValue(text: _selectedStyle ?? ''),
-          optionsBuilder: (TextEditingValue textEditingValue) {
-            if (textEditingValue.text.isEmpty) {
-              return BeerStyles.names;
-            }
-            return BeerStyles.names.where((style) =>
-              style.toLowerCase().contains(textEditingValue.text.toLowerCase())
-            );
-          },
-          onSelected: (String selection) {
-            setState(() => _selectedStyle = selection);
-          },
-          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-            return TextField(
-              controller: controller,
-              focusNode: focusNode,
-              decoration: const InputDecoration(
-                hintText: 'Ex: American IPA, Pilsner...',
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              onChanged: (value) {
-                _selectedStyle = value.isNotEmpty ? value : null;
-              },
-            );
-          },
-        ),
       ],
+    );
+  }
+
+  void _openStylePicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            // Poignée
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Text(
+                    'Choisir un style',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Fermer'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: StyleSelector(
+                selectedStyle: _selectedBeerStyle,
+                styles: BeerStyles.all,
+                onChanged: (style) {
+                  setState(() {
+                    _selectedBeerStyle = style;
+                    _selectedStyle = style?.name;
+                    _styleGuideExpanded = true;
+                  });
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -269,25 +395,27 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSaving = true);
-    
+
     try {
       final recipe = Recipe(
         id: widget.recipe?.id,
         name: _nameController.text.trim(),
         beerStyle: _selectedStyle,
-        volumeLiters: _parseDouble(_volumeController.text) ?? AppConstants.defaultVolume,
+        volumeLiters:
+            _parseDouble(_volumeController.text) ?? AppConstants.defaultVolume,
         initialWater: _parseDouble(_initialWaterController.text),
         finalWater: _parseDouble(_finalWaterController.text),
-        // Les valeurs cibles sont calculées automatiquement depuis les ingrédients
         targetOg: widget.recipe?.targetOg,
         targetFg: widget.recipe?.targetFg,
         targetIbu: widget.recipe?.targetIbu,
         targetEbc: widget.recipe?.targetEbc,
         targetAbv: widget.recipe?.targetAbv,
-        boilTime: _parseInt(_boilTimeController.text) ?? AppConstants.defaultBoilTime,
-        efficiency: _parseDouble(_efficiencyController.text) ?? AppConstants.defaultEfficiency,
+        boilTime: _parseInt(_boilTimeController.text) ??
+            AppConstants.defaultBoilTime,
+        efficiency: _parseDouble(_efficiencyController.text) ??
+            AppConstants.defaultEfficiency,
         notes: _notesController.text.trim().isNotEmpty
             ? _notesController.text.trim()
             : null,
@@ -295,16 +423,17 @@ class _RecipeFormPageState extends State<RecipeFormPage> {
 
       if (_isEditing) {
         await _service.update(recipe);
-        // Recalculer si volume ou efficacité ont changé
         await _service.recalculateStats(recipe.id);
       } else {
         await _service.create(recipe);
       }
-      
+
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditing ? 'Recette modifiée' : 'Recette créée')),
+          SnackBar(
+              content:
+                  Text(_isEditing ? 'Recette modifiée' : 'Recette créée')),
         );
       }
     } catch (e) {

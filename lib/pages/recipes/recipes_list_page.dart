@@ -4,7 +4,7 @@ import '../../models/recipe.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/common/beer_color_indicator.dart';
 import '../../widgets/common/app_scaffold.dart';
-import 'recipe_form_page.dart';
+import 'recipe_editor_page.dart';
 import 'recipe_detail_page.dart';
 
 /// Page listant toutes les recettes
@@ -229,10 +229,10 @@ class _RecipesListPageState extends State<RecipesListPage> {
   void _openForm(Recipe? recipe) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => RecipeFormPage(recipe: recipe),
+        builder: (_) => RecipeEditorPage(recipeId: recipe?.id),
       ),
     );
-    
+
     if (result == true) {
       _loadData();
     }

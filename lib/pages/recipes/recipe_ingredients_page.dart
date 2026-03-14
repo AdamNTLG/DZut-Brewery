@@ -10,6 +10,7 @@ import '../../models/mash_step.dart';
 import '../../services/recipe_service.dart';
 import '../../services/raw_material_service.dart';
 import '../../services/calculation_service.dart';
+import '../../widgets/brewing/style_gauge.dart';
 import '../../widgets/common/app_text_field.dart';
 
 /// Page pour éditer les ingrédients d'une recette
@@ -39,6 +40,9 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
   double? _calculatedEbc;
   double? _calculatedAbv;
   BeerStyle? _beerStyle;
+
+  // Affichage du panneau de style
+  bool _styleGuideExpanded = true;
 
   @override
   void initState() {
@@ -176,37 +180,104 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
     final hasValues = _calculatedOg != null && _calculatedOg! > 1.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.paddingM,
-        vertical: AppConstants.paddingS,
-      ),
       decoration: BoxDecoration(
-        color: AppConstants.secondaryColor.withValues(alpha: 0.05),
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[300]!),
-        ),
+        color: AppConstants.secondaryColor.withValues(alpha: 0.04),
+        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
       ),
-      child: hasValues
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatChip('OG', _calculatedOg!.toStringAsFixed(3),
-                    _beerStyle?.isOgInRange(_calculatedOg)),
-                _buildStatChip('FG', _calculatedFg!.toStringAsFixed(3),
-                    _beerStyle?.isFgInRange(_calculatedFg)),
-                _buildStatChip('IBU', _calculatedIbu!.toStringAsFixed(0),
-                    _beerStyle?.isIbuInRange(_calculatedIbu)),
-                _buildStatChip('EBC', _calculatedEbc!.toStringAsFixed(0),
-                    _beerStyle?.isEbcInRange(_calculatedEbc)),
-                _buildStatChip('ABV', '${_calculatedAbv!.toStringAsFixed(1)}%',
-                    _beerStyle?.isAbvInRange(_calculatedAbv)),
-              ],
-            )
-          : Text(
-              'Ajoutez des ingrédients pour voir les calculs',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
-              textAlign: TextAlign.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Barre de stats compacte (toujours visible)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.paddingM,
+              vertical: AppConstants.paddingS,
             ),
+            child: hasValues
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatChip('OG', _calculatedOg!.toStringAsFixed(3),
+                          _beerStyle?.isOgInRange(_calculatedOg)),
+                      _buildStatChip('FG', _calculatedFg!.toStringAsFixed(3),
+                          _beerStyle?.isFgInRange(_calculatedFg)),
+                      _buildStatChip('IBU', _calculatedIbu!.toStringAsFixed(0),
+                          _beerStyle?.isIbuInRange(_calculatedIbu)),
+                      _buildStatChip('EBC', _calculatedEbc!.toStringAsFixed(0),
+                          _beerStyle?.isEbcInRange(_calculatedEbc)),
+                      _buildStatChip(
+                          'ABV',
+                          '${_calculatedAbv!.toStringAsFixed(1)}%',
+                          _beerStyle?.isAbvInRange(_calculatedAbv)),
+                      // Bouton toggle du guide style
+                      if (_beerStyle != null)
+                        GestureDetector(
+                          onTap: () => setState(
+                              () => _styleGuideExpanded = !_styleGuideExpanded),
+                          child: AnimatedRotation(
+                            turns: _styleGuideExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: const Icon(
+                              Icons.expand_more,
+                              size: 20,
+                              color: AppConstants.secondaryColor,
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle_outline,
+                          size: 14, color: Colors.grey[400]),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Ajoutez des ingrédients pour voir les calculs',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  ),
+          ),
+
+          // Panneau de jauges style (affiché si style sélectionné + dévloppé)
+          if (_beerStyle != null && _styleGuideExpanded && hasValues)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppConstants.paddingM,
+                0,
+                AppConstants.paddingM,
+                AppConstants.paddingS,
+              ),
+              child: StyleGaugesCard(
+                style: _beerStyle!,
+                og: _calculatedOg,
+                fg: _calculatedFg,
+                ibu: _calculatedIbu,
+                ebc: _calculatedEbc,
+                abv: _calculatedAbv,
+                showAllGauges: false,
+              ),
+            ),
+
+          // Bandeau "Aucun style" si pas de style défini et qu'on a des valeurs
+          if (_beerStyle == null && hasValues)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppConstants.paddingM, 0, AppConstants.paddingM, AppConstants.paddingS),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 13, color: Colors.grey[400]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Choisissez un style dans les paramètres de la recette pour voir les jauges',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -224,15 +295,9 @@ class _RecipeIngredientsPageState extends State<RecipeIngredientsPage>
         Text(
           value,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: valueColor,
-          ),
+              fontWeight: FontWeight.bold, fontSize: 13, color: valueColor),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-        ),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
       ],
     );
   }
