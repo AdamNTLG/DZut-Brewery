@@ -142,6 +142,20 @@ class BatchService {
     );
   }
 
+  /// Met à jour le fermenteur assigné à un brassin
+  Future<void> updateFermenter(String batchId, String? fermenterId) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      BatchTable.tableName,
+      {
+        'fermenter_id': fermenterId,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: '${BatchTable.colId} = ?',
+      whereArgs: [batchId],
+    );
+  }
+
   /// Met à jour les densités d'un brassin
   Future<int> updateGravities(String batchId, {double? og, double? fg}) async {
     final db = await _dbHelper.database;

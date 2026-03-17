@@ -1200,6 +1200,81 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     );
   }
 
+  // ── Recherche matière première ─────────────────────────────────────────────
+  /// Champ de saisie avec recherche en temps réel + liste déroulante complète.
+  /// Frappe pour filtrer · champ vide = toute la liste.
+  Widget _materialSearch({
+    required String label,
+    required List<RawMaterial> materials,
+    required RawMaterial? selected,
+    required void Function(RawMaterial) onSelected,
+    String Function(RawMaterial)? subtitle,
+  }) {
+    return Autocomplete<RawMaterial>(
+      initialValue: selected != null
+          ? TextEditingValue(text: selected.name)
+          : null,
+      optionsBuilder: (TextEditingValue tv) {
+        if (tv.text.isEmpty) return materials;
+        final q = tv.text.toLowerCase();
+        return materials.where((m) => m.name.toLowerCase().contains(q));
+      },
+      displayStringForOption: (m) => m.name,
+      onSelected: onSelected,
+      fieldViewBuilder: (ctx, ctrl, focusNode, _) => TextFormField(
+        controller: ctrl,
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: const Icon(Icons.arrow_drop_down),
+        ),
+      ),
+      optionsViewBuilder: (ctx, onSel, options) => Align(
+        alignment: Alignment.topLeft,
+        child: Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 220, maxWidth: 340),
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              itemCount: options.length,
+              itemBuilder: (ctx, i) {
+                final m = options.elementAt(i);
+                final sub = subtitle?.call(m);
+                return InkWell(
+                  onTap: () => onSel(m),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.paddingM,
+                      vertical: AppConstants.paddingS,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(m.name, style: const TextStyle(fontSize: 14)),
+                        if (sub != null && sub.isNotEmpty)
+                          Text(
+                            sub,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Grains --------------------------------------------------------------------
   Future<void> _addGrain() async {
     final grains = _getMaterialsByType(MaterialType.grain);
@@ -1258,14 +1333,15 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<RawMaterial>(
-                  initialValue: selected,
-                  hint: const Text('Sélectionner un malt'),
-                  items: materials
-                      .map((m) => DropdownMenuItem(value: m, child: Text(m.name)))
-                      .toList(),
-                  onChanged: (m) => setS(() => selected = m),
-                  decoration: const InputDecoration(labelText: 'Malt'),
+                _materialSearch(
+                  label: 'Malt',
+                  materials: materials,
+                  selected: selected,
+                  onSelected: (m) => setS(() => selected = m),
+                  subtitle: (m) => [
+                    if (m.ebc != null) '${m.ebc!.toStringAsFixed(0)} EBC',
+                    if (m.notes != null) m.notes!,
+                  ].join(' · '),
                 ),
                 const SizedBox(height: AppConstants.paddingM),
                 AppNumberField(
@@ -1374,22 +1450,20 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<RawMaterial>(
-                  initialValue: selected,
-                  hint: const Text('Sélectionner un houblon'),
-                  items: materials
-                      .map(
-                        (m) => DropdownMenuItem(
-                          value: m,
-                          child: Text('${m.name} (${m.alphaAcid}% AA)'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (m) => setS(() => selected = m),
-                  decoration: const InputDecoration(labelText: 'Houblon'),
+                _materialSearch(
+                  label: 'Houblon',
+                  materials: materials,
+                  selected: selected,
+                  onSelected: (m) => setS(() => selected = m),
+                  subtitle: (m) => [
+                    if (m.alphaAcid != null)
+                      '${m.alphaAcid!.toStringAsFixed(1)}% AA',
+                    if (m.notes != null) m.notes!,
+                  ].join(' · '),
                 ),
                 const SizedBox(height: AppConstants.paddingM),
                 DropdownButtonFormField<HopUse>(
+                  isExpanded: true,
                   initialValue: hopUse,
                   items: HopUse.values
                       .map(
@@ -1537,17 +1611,16 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<RawMaterial>(
-                  initialValue: selected,
-                  hint: const Text('Sélectionner une levure'),
-                  items: materials
-                      .map(
-                        (m) =>
-                            DropdownMenuItem(value: m, child: Text(m.name)),
-                      )
-                      .toList(),
-                  onChanged: (m) => setS(() => selected = m),
-                  decoration: const InputDecoration(labelText: 'Levure'),
+                _materialSearch(
+                  label: 'Levure',
+                  materials: materials,
+                  selected: selected,
+                  onSelected: (m) => setS(() => selected = m),
+                  subtitle: (m) => [
+                    if (m.notes != null) m.notes!,
+                    if (m.attenuation != null)
+                      '${m.attenuation!.toStringAsFixed(0)}% att.',
+                  ].join(' · '),
                 ),
                 const SizedBox(height: AppConstants.paddingM),
                 Row(
@@ -1562,6 +1635,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                     const SizedBox(width: AppConstants.paddingM),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: unit,
                         items: const [
                           DropdownMenuItem(value: 'g', child: Text('grammes')),
@@ -1647,7 +1721,6 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
     final qtyController = TextEditingController(
       text: existing?.quantity.toStringAsFixed(1) ?? '1.0',
     );
-    final nameController = TextEditingController();
     String unit = existing?.unit ?? 'g';
     AdditionStep step = existing?.additionStep ?? AdditionStep.boil;
 
@@ -1664,32 +1737,16 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (materials.isNotEmpty)
-                  DropdownButtonFormField<RawMaterial>(
-                    initialValue: selected,
-                    hint: const Text('Sélectionner (optionnel)'),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('Autre (saisie manuelle)'),
-                      ),
-                      ...materials.map(
-                        (m) =>
-                            DropdownMenuItem(value: m, child: Text(m.name)),
-                      ),
-                    ],
-                    onChanged: (m) => setS(() => selected = m),
-                    decoration: const InputDecoration(labelText: 'Ingrédient'),
-                  ),
-                if (selected == null) ...[
-                  const SizedBox(height: AppConstants.paddingM),
-                  AppTextField(
-                    label: 'Nom de l\'ingrédient',
-                    controller: nameController,
-                  ),
-                ],
+                _materialSearch(
+                  label: 'Ingrédient',
+                  materials: materials,
+                  selected: selected,
+                  onSelected: (m) => setS(() => selected = m),
+                  subtitle: (m) => m.notes ?? '',
+                ),
                 const SizedBox(height: AppConstants.paddingM),
                 DropdownButtonFormField<AdditionStep>(
+                  isExpanded: true,
                   initialValue: step,
                   items: AdditionStep.values
                       .map(
@@ -1712,6 +1769,7 @@ class _RecipeEditorPageState extends State<RecipeEditorPage> {
                     const SizedBox(width: AppConstants.paddingM),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: unit,
                         items: const [
                           DropdownMenuItem(value: 'g', child: Text('g')),

@@ -438,7 +438,13 @@ class _BatchStepDialogState extends State<BatchStepDialog> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: StepType.values.where((t) => t != StepType.other).map((type) {
+              children: StepType.values.where((t) => !const {
+                StepType.other,
+                StepType.cooling,
+                StepType.pitching,
+                StepType.fermentation,
+                StepType.conditioning,
+              }.contains(t)).map((type) {
                 final isSelected = type == _selectedType;
                 return ChoiceChip(
                   label: Text('${type.icon} ${type.label}'),

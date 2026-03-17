@@ -4,7 +4,10 @@ import '../../models/batch.dart';
 import '../../models/batch_measurement.dart';
 import '../../models/batch_step.dart';
 import '../../models/batch_hop_addition.dart';
+import '../../models/fermenter.dart';
 import '../../services/batch_service.dart';
+import '../../services/fermenter_service.dart';
+import '../../services/notification_service.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/brewing/batch_steps_card.dart';
 import '../../widgets/brewing/batch_hop_additions_card.dart';
@@ -129,9 +132,16 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
 
         const SizedBox(height: AppConstants.paddingM),
 
-        // Brewing steps
+        // Brewing steps (journée de brassage uniquement)
+        // Refroidissement, ensemencement, fermentation et conditionnement
+        // sont gérés via la flèche de statut dans le header.
         BatchStepsCard(
-          steps: _steps,
+          steps: _steps.where((s) => !const {
+            StepType.cooling,
+            StepType.pitching,
+            StepType.fermentation,
+            StepType.conditioning,
+          }.contains(s.type)).toList(),
           onAddStep: _addStep,
           onStartStep: _startStep,
           onEndStep: _endStep,
@@ -435,28 +445,305 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
     final nextStatus = _batch!.status.nextStatus;
     if (nextStatus == null) return;
 
-    final confirm = await showDialog<bool>(
+    if (nextStatus == BatchStatus.fermenting) {
+      await _advanceToFermenting();
+    } else if (nextStatus == BatchStatus.conditioning) {
+      await _advanceToConditioning();
+    } else {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Changer le statut'),
+          content: Text('Passer à "${nextStatus.label}" ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirmer'),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        await _service.updateStatus(widget.batchId, nextStatus);
+        _loadData();
+      }
+    }
+  }
+
+  /// Transition brewing → fermenting : sélection du fermenteur
+  Future<void> _advanceToFermenting() async {
+    final fermenterService = FermenterService();
+    final fermenters = await fermenterService.getAll();
+    if (!mounted) return;
+
+    Fermenter? selected = fermenters.isNotEmpty
+        ? fermenters.firstWhere(
+            (f) => f.id == _batch!.fermenterId,
+            orElse: () => fermenters.first,
+          )
+        : null;
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Status'),
-        content: Text('Move batch to "${nextStatus.label}"?'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('🫧 Passer en fermentation'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (fermenters.isEmpty)
+                const Text('Aucun fermenteur configuré — la transition sera quand même enregistrée.')
+              else ...[
+                const Text('Sélectionner le fermenteur :'),
+                const SizedBox(height: 8),
+                RadioGroup<Fermenter>(
+                  groupValue: selected,
+                  onChanged: (v) => setS(() => selected = v),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: fermenters.map((f) => RadioListTile<Fermenter>(
+                      dense: true,
+                      title: Text(f.name),
+                      subtitle: Text('${f.capacityLiters.toStringAsFixed(0)} L'),
+                      value: f,
+                    )).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirmer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final chosenFermenter = selected;
+    if (chosenFermenter != null) {
+      final oldId = _batch!.fermenterId;
+      if (oldId != null && oldId != chosenFermenter.id) {
+        await fermenterService.setAvailability(oldId, true);
+      }
+      await _service.updateFermenter(widget.batchId, chosenFermenter.id);
+      await fermenterService.setAvailability(chosenFermenter.id, false);
+    }
+    await _service.updateStatus(widget.batchId, BatchStatus.fermenting);
+
+    // Schedule dry hop notifications if any dry hops are pending
+    final dryHops = _hopAdditions
+        .where((h) => h.type == HopAdditionType.dryHop && h.addedAt == null)
+        .toList();
+
+    if (dryHops.isNotEmpty && mounted) {
+      await _scheduleDryHopNotifications(dryHops);
+    }
+
+    if (mounted) _loadData();
+  }
+
+  /// Ask for fermentation duration and schedule dry hop reminders.
+  Future<void> _scheduleDryHopNotifications(List<BatchHopAddition> dryHops) async {
+    final daysController = TextEditingController(text: '14');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🍃 Dry Hop — Rappels'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${dryHops.length} dry hop(s) détecté(s). '
+              'Indiquer la durée prévue de fermentation pour planifier les rappels à 9h.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: daysController,
+              decoration: const InputDecoration(
+                labelText: 'Durée de fermentation (jours)',
+                suffixText: 'jours',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Passer'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Planifier'),
           ),
         ],
       ),
     );
 
-    if (confirm == true) {
-      await _service.updateStatus(widget.batchId, nextStatus);
-      _loadData();
+    if (confirmed != true) return;
+
+    final days = int.tryParse(daysController.text.trim()) ?? 14;
+    final fermentationEnd = DateTime.now().add(Duration(days: days));
+    final batchName = _batch?.recipeName ?? 'Brassin';
+
+    await NotificationService().requestPermissions();
+    await NotificationService().scheduleDryHopNotifications(
+      batchId: widget.batchId,
+      batchName: batchName,
+      dryHops: dryHops,
+      fermentationEndDate: fermentationEnd,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${dryHops.length} rappel(s) planifié(s) 🍃')),
+      );
     }
+  }
+
+  /// Transition fermenting → conditioning : bouteilles ou fût
+  Future<void> _advanceToConditioning() async {
+    final mode = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🧊 Conditionnement'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Comment va être conditionné ce brassin ?'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(ctx, 'bouteilles'),
+                    icon: const Text('🍾', style: TextStyle(fontSize: 20)),
+                    label: const Text('Bouteilles'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(ctx, 'keg'),
+                    icon: const Text('🛢️', style: TextStyle(fontSize: 20)),
+                    label: const Text('Fût (Keg)'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+
+    if (mode == null) return;
+
+    if (mode == 'bouteilles') {
+      final oldId = _batch!.fermenterId;
+      if (oldId != null) {
+        await FermenterService().setAvailability(oldId, true);
+        await _service.updateFermenter(widget.batchId, null);
+      }
+      await _service.updateStatus(widget.batchId, BatchStatus.conditioning);
+      if (mounted) _loadData();
+    } else {
+      await _pickKegAndAdvance();
+    }
+  }
+
+  /// Sélection du fût (keg) pour le conditionnement
+  Future<void> _pickKegAndAdvance() async {
+    final fermenterService = FermenterService();
+    final fermenters = await fermenterService.getAll();
+    if (!mounted) return;
+
+    Fermenter? selected = fermenters.isNotEmpty ? fermenters.first : null;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('🛢️ Sélectionner le fût'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (fermenters.isEmpty)
+                const Text('Aucun fût configuré — ajoutez-en dans la section Fermenteurs.')
+              else ...[
+                const Text('Fût de conditionnement :'),
+                const SizedBox(height: 8),
+                RadioGroup<Fermenter>(
+                  groupValue: selected,
+                  onChanged: (v) => setS(() => selected = v),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: fermenters.map((f) => RadioListTile<Fermenter>(
+                      dense: true,
+                      title: Text(f.name),
+                      subtitle: Text('${f.capacityLiters.toStringAsFixed(0)} L'),
+                      value: f,
+                    )).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: fermenters.isEmpty ? null : () => Navigator.pop(ctx, true),
+              child: const Text('Confirmer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final chosenKeg = selected;
+    if (chosenKeg != null) {
+      final oldId = _batch!.fermenterId;
+      if (oldId != null && oldId != chosenKeg.id) {
+        await fermenterService.setAvailability(oldId, true);
+      }
+      await _service.updateFermenter(widget.batchId, chosenKeg.id);
+      await fermenterService.setAvailability(chosenKeg.id, false);
+    }
+    await _service.updateStatus(widget.batchId, BatchStatus.conditioning);
+    if (mounted) _loadData();
   }
 
   Future<void> _addMeasurement() async {
@@ -710,11 +997,33 @@ class _BatchDetailPageState extends State<BatchDetailPage> {
   }
 
   Future<void> _markHopAdded(BatchHopAddition addition) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🍃 Confirmer le dry hop'),
+        content: Text(
+          'Confirmer l\'ajout de ${addition.amountGrams.toStringAsFixed(0)}g de ${addition.hopName} dans le fermenteur ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirmer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     await _service.markHopAdditionAdded(addition.id);
     _loadData();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${addition.hopName} added')),
+        SnackBar(content: Text('${addition.hopName} ajouté ✓')),
       );
     }
   }

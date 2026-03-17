@@ -25,7 +25,7 @@ class _RawMaterialsListPageState extends State<RawMaterialsListPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadData();
   }
 
@@ -84,6 +84,7 @@ class _RawMaterialsListPageState extends State<RawMaterialsListPage>
             Tab(text: '🌾 Céréales (${_getFilteredMaterials(MaterialType.grain).length})'),
             Tab(text: '🌿 Houblons (${_getFilteredMaterials(MaterialType.hop).length})'),
             Tab(text: '🧫 Levures (${_getFilteredMaterials(MaterialType.yeast).length})'),
+            Tab(text: '📦 Divers (${_getFilteredMaterials(MaterialType.other).length})'),
           ],
         ),
       ),
@@ -122,6 +123,7 @@ class _RawMaterialsListPageState extends State<RawMaterialsListPage>
                       _buildMaterialsList(MaterialType.grain),
                       _buildMaterialsList(MaterialType.hop),
                       _buildMaterialsList(MaterialType.yeast),
+                      _buildMaterialsList(MaterialType.other),
                     ],
                   ),
           ),

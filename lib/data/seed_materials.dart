@@ -716,6 +716,121 @@ class SeedMaterials {
     _y('sy_230', 'Red Star Ale', 'dry', 77.0, 'Red Star', null, 'Ale'),
   ];
 
-  // ── OTHERS (placeholder — filled in next step) ──────────────────────────────
-  static final List<Map<String, dynamic>> _others = [];
+  // ── OTHERS ───────────────────────────────────────────────────────────────────
+  static final List<Map<String, dynamic>> _others = [
+    // ── Sucres ─────────────────────────────────────────────────────────────
+    _o('o_001', 'Sucrose (Sucre blanc)',               'Sucre'),
+    _o('o_002', 'Dextrose (Glucose)',                  'Sucre'),
+    _o('o_003', 'Fructose',                            'Sucre'),
+    _o('o_004', 'Lactose',                             'Sucre'),
+    _o('o_005', 'Cassonade',                           'Sucre'),
+    _o('o_006', 'Sucre de canne brut (Turbinado)',     'Sucre'),
+    _o('o_007', 'Mélasse',                             'Sucre'),
+    _o('o_008', 'Sirop d\'érable',                     'Sucre'),
+    _o('o_009', 'Miel',                                'Sucre'),
+    _o('o_010', 'DME Pâle (Extrait de malt sec)',      'Sucre'),
+    _o('o_011', 'DME Ambré (Extrait de malt sec)',     'Sucre'),
+    _o('o_012', 'DME Foncé (Extrait de malt sec)',     'Sucre'),
+    _o('o_013', 'LME Pâle (Extrait de malt liquide)', 'Sucre'),
+    _o('o_014', 'LME Ambré (Extrait de malt liquide)','Sucre'),
+    _o('o_015', 'Sucre de palme (Jaggery)',            'Sucre'),
+    _o('o_016', 'Sucre de coco',                       'Sucre'),
+    _o('o_017', 'Sirop de maïs',                       'Sucre'),
+    _o('o_018', 'Tréacle',                             'Sucre'),
+
+    // ── Clarifiants ─────────────────────────────────────────────────────────
+    _o('o_030', 'Irish Moss',           'Clarifiant'),
+    _o('o_031', 'Whirlfloc',            'Clarifiant'),
+    _o('o_032', 'Gélatine',             'Clarifiant'),
+    _o('o_033', 'Bentonite',            'Clarifiant'),
+    _o('o_034', 'Isinglass',            'Clarifiant'),
+    _o('o_035', 'Kieselsol',            'Clarifiant'),
+    _o('o_036', 'Chitosane',            'Clarifiant'),
+    _o('o_037', 'PVPP (Polyclar)',      'Clarifiant'),
+    _o('o_038', 'Carraghénane',         'Clarifiant'),
+
+    // ── Épices & Arômes ─────────────────────────────────────────────────────
+    _o('o_050', 'Coriandre (graines)',              'Épice'),
+    _o('o_051', 'Zeste d\'orange douce',            'Épice'),
+    _o('o_052', 'Zeste d\'orange amère',            'Épice'),
+    _o('o_053', 'Zeste de citron',                  'Épice'),
+    _o('o_054', 'Zeste de pamplemousse',            'Épice'),
+    _o('o_055', 'Vanille (gousse)',                 'Épice'),
+    _o('o_056', 'Extrait de vanille',               'Épice'),
+    _o('o_057', 'Cannelle (bâton)',                 'Épice'),
+    _o('o_058', 'Cardamome',                        'Épice'),
+    _o('o_059', 'Gingembre (frais)',                'Épice'),
+    _o('o_060', 'Gingembre (sec)',                  'Épice'),
+    _o('o_061', 'Poivre noir',                      'Épice'),
+    _o('o_062', 'Piment de la Jamaïque (allspice)', 'Épice'),
+    _o('o_063', 'Clou de girofle',                  'Épice'),
+    _o('o_064', 'Anis étoilé',                      'Épice'),
+    _o('o_065', 'Muscade',                          'Épice'),
+    _o('o_066', 'Cacao en poudre',                  'Épice'),
+    _o('o_067', 'Nibs de cacao',                    'Épice'),
+    _o('o_068', 'Café moulu',                       'Épice'),
+    _o('o_069', 'Lavande',                          'Épice'),
+    _o('o_070', 'Thym',                             'Épice'),
+    _o('o_071', 'Baies de genièvre',                'Épice'),
+    _o('o_072', 'Hibiscus (fleurs)',                 'Épice'),
+    _o('o_073', 'Pétales de rose',                  'Épice'),
+    _o('o_074', 'Camomille',                        'Épice'),
+    _o('o_075', 'Poivre de Sichuan',                'Épice'),
+    _o('o_076', 'Poivre rose',                      'Épice'),
+
+    // ── Fruits & Purées ─────────────────────────────────────────────────────
+    _o('o_090', 'Purée de framboise',               'Fruit'),
+    _o('o_091', 'Purée de cerise',                  'Fruit'),
+    _o('o_092', 'Purée de mangue',                  'Fruit'),
+    _o('o_093', 'Purée de fraise',                  'Fruit'),
+    _o('o_094', 'Purée de pêche',                   'Fruit'),
+    _o('o_095', 'Purée de myrtille',                'Fruit'),
+    _o('o_096', 'Purée de fruit de la passion',     'Fruit'),
+    _o('o_097', 'Purée d\'abricot',                 'Fruit'),
+    _o('o_098', 'Purée de poire',                   'Fruit'),
+    _o('o_099', 'Purée d\'ananas',                  'Fruit'),
+    _o('o_100', 'Cerises (entières)',               'Fruit'),
+    _o('o_101', 'Framboises (fraîches/congelées)',  'Fruit'),
+    _o('o_102', 'Zeste de lime',                    'Fruit'),
+
+    // ── Sels de brassage ─────────────────────────────────────────────────────
+    _o('o_120', 'Gypse (CaSO₄)',                    'Sel de brassage'),
+    _o('o_121', 'Chlorure de calcium (CaCl₂)',      'Sel de brassage'),
+    _o('o_122', 'Bicarbonate de soude (NaHCO₃)',    'Sel de brassage'),
+    _o('o_123', 'Chlorure de magnésium (MgCl₂)',    'Sel de brassage'),
+    _o('o_124', 'Sel d\'Epsom (MgSO₄)',             'Sel de brassage'),
+    _o('o_125', 'Carbonate de calcium — Craie (CaCO₃)', 'Sel de brassage'),
+    _o('o_126', 'Sel de table (NaCl)',              'Sel de brassage'),
+
+    // ── Acides ───────────────────────────────────────────────────────────────
+    _o('o_140', 'Acide lactique (88%)',    'Acide'),
+    _o('o_141', 'Acide phosphorique (10%)','Acide'),
+    _o('o_142', 'Acide citrique',          'Acide'),
+    _o('o_143', 'Acide tartrique',         'Acide'),
+    _o('o_144', 'Acide malique',           'Acide'),
+
+    // ── Nutriments levure ─────────────────────────────────────────────────────
+    _o('o_160', 'DAP (Phosphate diammonique)', 'Nutriment levure'),
+    _o('o_161', 'Fermaid-K',                   'Nutriment levure'),
+    _o('o_162', 'Fermaid-O',                   'Nutriment levure'),
+    _o('o_163', 'GoFerm',                      'Nutriment levure'),
+    _o('o_164', 'Nutriment levure générique',  'Nutriment levure'),
+    _o('o_165', 'Écales de levure (Yeast hulls)', 'Nutriment levure'),
+
+    // ── Agents de traitement ──────────────────────────────────────────────────
+    _o('o_180', 'Métabisulfite de potassium (Campden)', 'Traitement'),
+    _o('o_181', 'Métabisulfite de sodium',              'Traitement'),
+    _o('o_182', 'Sorbate de potassium',                 'Traitement'),
+    _o('o_183', 'Enzyme pectique',                      'Traitement'),
+    _o('o_184', 'Amylase (enzyme)',                     'Traitement'),
+    _o('o_185', 'Betaglucanase (enzyme)',               'Traitement'),
+    _o('o_186', 'Protéase (enzyme)',                    'Traitement'),
+
+    // ── Bois & Maturation ─────────────────────────────────────────────────────
+    _o('o_200', 'Copeaux de chêne américain', 'Bois/Maturation'),
+    _o('o_201', 'Copeaux de chêne français',  'Bois/Maturation'),
+    _o('o_202', 'Spirales de chêne',          'Bois/Maturation'),
+    _o('o_203', 'Écorce de chêne',            'Bois/Maturation'),
+    _o('o_204', 'Copeaux de bois fumé',       'Bois/Maturation'),
+  ];
 }

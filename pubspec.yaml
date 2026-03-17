@@ -28,6 +28,10 @@ dependencies:
   # Formulaires
   reactive_forms: ^16.1.1
 
+  # Notifications locales planifiées
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

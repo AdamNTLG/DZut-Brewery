@@ -13,6 +13,7 @@ import 'tables/batch_measurement_table.dart';
 import 'tables/batch_step_table.dart';
 import 'tables/batch_hop_addition_table.dart';
 import 'tables/device_table.dart';
+import '../data/seed_materials.dart';
 
 /// Singleton for SQLite database management
 /// 
@@ -22,7 +23,7 @@ import 'tables/device_table.dart';
 /// ```
 class DBHelper {
   static const String _databaseName = 'brewmaster.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
 
   // Singleton pattern
   DBHelper._privateConstructor();
@@ -84,6 +85,9 @@ class DBHelper {
     // Création des index pour optimiser les requêtes
     await _createIndexes(db);
 
+    // Seed des matières premières (grains, houblons, levures, additifs)
+    await SeedMaterials.seed(db);
+
     // Insertion de données de démonstration (optionnel)
     await _insertSampleData(db);
   }
@@ -104,6 +108,11 @@ class DBHelper {
       await db.execute(
         'CREATE INDEX idx_batch_hop_additions_batch ON ${BatchHopAdditionTable.tableName}(batch_id)'
       );
+    }
+
+    // Migration v4 -> v5: Seed des matières premières
+    if (oldVersion < 5) {
+      await SeedMaterials.seed(db);
     }
 
     // Migration v3 -> v4: Add BrewCreator device tables

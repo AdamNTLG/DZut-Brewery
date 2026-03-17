@@ -213,11 +213,10 @@ class _BatchFormPageState extends State<BatchFormPage> {
           )
         else
           DropdownButtonFormField<Recipe>(
+            isExpanded: true,
             initialValue: _selectedRecipe,
             decoration: const InputDecoration(
               hintText: 'Select a recipe',
-              filled: true,
-              fillColor: Colors.white,
             ),
             items: _recipes.map((recipe) {
               return DropdownMenuItem(
@@ -246,10 +245,8 @@ class _BatchFormPageState extends State<BatchFormPage> {
       children: [
         Text(
           'Brew Date',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
-            fontSize: 14,
           ),
         ),
         const SizedBox(height: AppConstants.paddingXS),
@@ -257,8 +254,6 @@ class _BatchFormPageState extends State<BatchFormPage> {
           onTap: _selectDate,
           child: InputDecorator(
             decoration: const InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
               suffixIcon: Icon(Icons.calendar_today),
             ),
             child: Text(
@@ -276,31 +271,25 @@ class _BatchFormPageState extends State<BatchFormPage> {
       children: [
         Text(
           'Fermenter (optional)',
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
-            fontSize: 14,
           ),
         ),
         const SizedBox(height: AppConstants.paddingXS),
         if (_fermenters.isEmpty)
           InputDecorator(
-            decoration: const InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-            ),
+            decoration: const InputDecoration(),
             child: Text(
               'No fermenter available',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Theme.of(context).hintColor),
             ),
           )
         else
           DropdownButtonFormField<Fermenter>(
+            isExpanded: true,
             initialValue: _selectedFermenter,
             decoration: const InputDecoration(
               hintText: 'Select a fermenter',
-              filled: true,
-              fillColor: Colors.white,
             ),
             items: [
               const DropdownMenuItem(
